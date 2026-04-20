@@ -35,11 +35,26 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run sync
+      - name: Run protocol sync
         working-directory: master/src
         run: python sync.py --output ../../gh-pages/data/
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout PacketEvents (sparse — packettype only)
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse \
+            https://github.com/retrooper/packetevents.git \
+            --branch 2.0 packetevents
+          cd packetevents
+          git sparse-checkout set api/src/main/java/com/github/retrooper/packetevents/protocol/packettype
+
+      - name: Parse PacketEvents wrapper mappings
+        working-directory: master/src
+        run: |
+          python parse_packetevents.py \
+            --source ../../packetevents/api/src/main/java/com/github/retrooper/packetevents/protocol/packettype \
+            --output ../../gh-pages/data/packetevents.json
 
       - name: Commit to gh-pages if changed
         working-directory: gh-pages
