@@ -6,6 +6,7 @@ const DATA_BASE = 'data';
 const app = {
     versions: [],                    // from versions.json
     versionCache: new Map(),         // sha -> parsed version data (from JSON files)
+    packetEvents: null,              // from packetevents.json (wrapper mappings)
     fromSha: null,
     toSha: null,
     currentDiff: null,
@@ -54,6 +55,106 @@ async function loadVersionData(versionInfo) {
 
 function unescHtml(s) {
     return String(s).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PACKETEVENTS WRAPPER LOOKUP
+   ═══════════════════════════════════════════════════════════════════════════ */
+async function loadPacketEventsData() {
+    try {
+        const resp = await fetch(`${DATA_BASE}/packetevents.json`);
+        if (!resp.ok) return null;
+        return await resp.json();
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Resolves the best PacketEvents version enum for a given mc-protocol version.
+ * Falls back to the nearest older PE version, same logic as VersionMapper in PacketEvents.
+ *
+ * @param {string} mcVersion - e.g. "1.21.6", "26.1-snapshot-1"
+ * @param {string} key - e.g. "play_serverbound", "play_clientbound", "configuration_serverbound"
+ * @returns {string|null} - PE version key like "1_21_6" or null
+ */
+function findPEVersion(mcVersion, key) {
+    if (!app.packetEvents) return null;
+    const peVersions = app.packetEvents.versions[key];
+    if (!peVersions || !peVersions.length) return null;
+
+    // Normalize mc-protocol version to PE format: "1.21.6" → "1_21_6", "26.1" → "26_1"
+    // Strip snapshot/pre/rc suffixes for matching
+    const stripped = mcVersion.replace(/-(?:pre|rc|snapshot).*$/i, '').replace(/\./g, '_');
+
+    // Exact match first
+    if (peVersions.includes(stripped)) return stripped;
+
+    // Fallback: find the nearest older version
+    // Compare by version tuple
+    const targetParts = stripped.split('_').map(Number);
+    let best = null;
+
+    for (const pv of peVersions) {
+        const pvParts = pv.split('_').map(Number);
+        // Is pvParts <= targetParts?
+        let isOlderOrEqual = true;
+        for (let i = 0; i < Math.max(pvParts.length, targetParts.length); i++) {
+            const a = pvParts[i] || 0, b = targetParts[i] || 0;
+            if (a > b) {
+                isOlderOrEqual = false;
+                break;
+            }
+            if (a < b) break;
+        }
+        if (isOlderOrEqual) best = pv;
+    }
+
+    return best;
+}
+
+/**
+ * Looks up the PacketEvents wrapper info for a packet by its ID in a specific version.
+ *
+ * @param {number} packetId - Packet ID (e.g. 0x1B = 27)
+ * @param {string} mcVersion - MC version string (e.g. "1.21.6")
+ * @param {string} direction - "Clientbound" or "Serverbound"
+ * @param {string} stateName - Connection state name (e.g. "Game", "Play", "Configuration")
+ * @returns {{ enumName: string, wrapper: string|null, url: string|null, peVersion: string }|null}
+ */
+function lookupWrapper(packetId, mcVersion, direction, stateName) {
+    if (!app.packetEvents) return null;
+
+    // Build the key: "play_serverbound", "configuration_clientbound", etc.
+    const stateNorm = (stateName || '').toLowerCase();
+    const state = (stateNorm === 'game' || stateNorm === 'play') ? 'play'
+        : (stateNorm === 'config' || stateNorm === 'configuration') ? 'configuration'
+            : stateNorm;
+    const dir = (direction || '').toLowerCase();
+    const key = `${state}_${dir}`;
+
+    // Find the PE version for this mc version
+    const peVersion = findPEVersion(mcVersion, key);
+    if (!peVersion) return null;
+
+    // Look up the enum at the packet's ordinal position
+    const versionMappings = app.packetEvents.mappings[key];
+    if (!versionMappings) return null;
+    const enumList = versionMappings[peVersion];
+    if (!enumList || packetId >= enumList.length) return null;
+
+    const enumName = enumList[packetId];
+    if (!enumName) return null;
+
+    // Look up the wrapper class for this enum name
+    const wrapperInfo = app.packetEvents.wrappers[enumName];
+
+    return {
+        enumName,
+        wrapper: wrapperInfo?.wrapper || null,
+        url: wrapperInfo?.url || null,
+        peVersion,
+    };
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -768,11 +869,11 @@ function renderStateGroup(g) {
         : esc(g.stateName);
     return `<div class="state-group" data-state="${esc(g.stateName.toLowerCase())}">
     <div class="state-group-head"><span class="chevron">▼</span><span>${name}</span><span style="margin-left:auto">${packets.length} changed</span></div>
-    <div class="state-group-body">${packets.map(renderPacket).join('')}</div>
+    <div class="state-group-body">${packets.map(p => renderPacket(p, g)).join('')}</div>
   </div>`;
 }
 
-function renderPacket(p) {
+function renderPacket(p, group) {
     const ref = p.after || p.before;
     let idHtml;
     if (p.idChanged) {
@@ -808,6 +909,23 @@ function renderPacket(p) {
             : `<span class="chain-badge">⛓ ${p.chain.length} steps</span>`
         : '';
 
+    // PacketEvents wrapper lookup
+    let wrapperBadge = '';
+    if (group && app.currentVersions) {
+        const toVersion = app.currentVersions.to.version;
+        const direction = (group.direction || '').toLowerCase();
+        const stateName = group.stateName;
+        const lookupRef = p.after || p.before;
+        const wi = lookupWrapper(lookupRef.id, toVersion, direction, stateName);
+        if (wi && wi.wrapper) {
+            wrapperBadge = wi.url
+                ? `<a class="wrapper-badge" href="${esc(wi.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${esc(wi.enumName)} (PE ${wi.peVersion.replace(/_/g, '.')})">${esc(wi.wrapper)}</a>`
+                : `<span class="wrapper-badge" title="${esc(wi.enumName)} (PE ${wi.peVersion.replace(/_/g, '.')})">${esc(wi.wrapper)}</span>`;
+        } else if (wi) {
+            wrapperBadge = `<span class="wrapper-badge no-wrapper" title="${esc(wi.enumName)} (PE ${wi.peVersion.replace(/_/g, '.')}) — no wrapper class">${esc(wi.enumName)}</span>`;
+        }
+    }
+
     return `<div class="pkt ${p.tag}" data-tag="${p.tag}" data-pkt-uid="${esc(pktUid)}" data-search="${esc(searchBits.join(' ').toLowerCase())}">
     <div class="pkt-row">
       ${idHtml}
@@ -818,6 +936,7 @@ function renderPacket(p) {
         ${chainBadge}
       </span>
     </div>
+    ${wrapperBadge ? `<div class="pkt-wrapper">${wrapperBadge}</div>` : ''}
     ${preview}
     <div class="pkt-details">${renderDetails(p)}</div>
   </div>`;
@@ -1377,6 +1496,7 @@ async function applyStateFromUrl({reloadIfVersionsChanged = false} = {}) {
 async function init() {
     try {
         app.versions = await loadVersionIndex();
+        app.packetEvents = await loadPacketEventsData();
         if (app.versions.length < 2) {
             $('#mainContent').innerHTML = `<div class="error-banner">Not enough protocol versions found. Run the sync script first.</div>`;
             setStatus('error', 'no data');
