@@ -12,6 +12,7 @@ import argparse
 import json
 import re
 from pathlib import Path
+from typing import Any
 
 
 def parse_packet_type_java(path: Path) -> dict:
@@ -21,7 +22,6 @@ def parse_packet_type_java(path: Path) -> dict:
     enum names to their wrapper class names.
     """
     text = path.read_text(encoding="utf-8")
-    result = {}
 
     # Parse Play.Client enum entries: NAME(WrapperClass.class),
     # Parse Play.Server enum entries
@@ -30,13 +30,6 @@ def parse_packet_type_java(path: Path) -> dict:
     # Parse Login.Client / Login.Server
     # Parse Status.Client / Status.Server
     # Parse Handshaking.Client
-
-    sections = [
-        ("play_serverbound",
-         r"public enum Client implements PacketTypeCommon, ServerBoundPacket\s*\{(.*?)\n\s*private static int INDEX",),
-        ("play_clientbound",
-         r"public enum Server implements PacketTypeCommon, ClientBoundPacket\s*\{(.*?)\n\s*private static int INDEX",),
-    ]
 
     # The Play.Client and Play.Server enums are the big ones.
     # We need to find them within the Play class context.
@@ -148,7 +141,7 @@ def parse_version_enum(path: Path) -> list[str]:
 
     # Find "public enum XXX {" ... "}"
     enum_body_rx = re.compile(
-        r"public\s+enum\s+\w+\s*\{(.*?)\n\s*\}",
+        r"public\s+enum\s+\w+\s*\{(.*?)\n\s*}",
         re.DOTALL,
     )
     m = enum_body_rx.search(text)
@@ -202,7 +195,7 @@ def classify_enum_file(filename: str) -> tuple[str, str, str]:
     return "unknown", "unknown", "unknown"
 
 
-def scan_version_enums(packettype_dir: Path) -> dict:
+def scan_version_enums(packettype_dir: Path) -> tuple[dict[Any, Any], dict[Any, Any]]:
     """Scans all version-specific enum files in the packettype directory.
 
     Returns a nested dict: {state}_{direction} → {version} → [enum_names_in_order]
