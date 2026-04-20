@@ -3,7 +3,7 @@ name: Sync Protocol Data
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 * * * *"
+    - cron: "0 * * * *"  # hourly
 
 permissions:
   contents: write
@@ -36,7 +36,8 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run sync
-        run: python master/src/sync.py --output gh-pages/data/
+        working-directory: master/src
+        run: python sync.py --output ../../gh-pages/data/
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

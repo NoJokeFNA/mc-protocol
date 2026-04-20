@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Ruff Lint
+        run: ruff check --output-format=github .
+
+  test-parser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Validate parser against live readme
+        working-directory: src
+        run: |
+          python -c "
+          from parser import parse_readme, extract_raw_markdown
+          import requests
+
+          # Fetch the current live readme (always latest)
+          url = 'https://raw.githubusercontent.com/derklaro/mc-protocol/refs/heads/gh-pages/readme.md'
+          text = requests.get(url, timeout=30).text
+
+          parsed = parse_readme(text)
+          assert parsed['protocol'], 'Protocol version not parsed'
+          assert len(parsed['sections']) > 0, 'No sections parsed'
+
+          total_packets = sum(len(s['packets']) for s in parsed['sections'])
+          assert total_packets > 50, f'Only {total_packets} packets parsed'
+
+          raw = extract_raw_markdown(text)
+          assert len(raw) > 50, f'Only {len(raw)} raw blocks'
+
+          # Verify HTML entities are decoded
+          for sec in parsed['sections']:
+              for pkt in sec['packets']:
+                  for f in pkt['fields']:
+                      assert '&lt;' not in f['full'], f'Undecoded entity in {f[\"full\"]}'
+
+          print(f'OK: protocol {parsed[\"protocol\"]}, {len(parsed[\"sections\"])} sections, {total_packets} packets, {len(raw)} raw blocks')
+          "

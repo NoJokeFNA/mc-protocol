@@ -16,13 +16,12 @@ import argparse
 import json
 import os
 import re
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
 
-from src.parser import extract_raw_markdown, parse_readme
+from parser import extract_raw_markdown, parse_readme
 
 OWNER = "derklaro"
 REPO = "mc-protocol"
@@ -103,11 +102,21 @@ def extract_versions(commits: list[dict]) -> list[dict]:
 
 
 def fetch_readme(sha: str) -> str:
-    """Fetches the readme.md for a specific commit SHA."""
+    """Fetches the readme.md for a specific commit SHA.
+
+    Tries with SSL verification first, falls back to unverified if
+    GitHub's raw CDN returns an SSL error (happens with some older commits).
+    """
     url = f"{RAW}/{OWNER}/{REPO}/{sha}/readme.md"
-    resp = requests.get(url, timeout=30)
-    resp.raise_for_status()
-    return resp.text
+    try:
+        resp = requests.get(url, timeout=30)
+        resp.raise_for_status()
+        return resp.text
+    except requests.exceptions.SSLError:
+        # Retry without SSL verification as fallback
+        resp = requests.get(url, timeout=30, verify=False)
+        resp.raise_for_status()
+        return resp.text
 
 
 def load_existing_versions(output_dir: Path) -> dict[str, dict]:
