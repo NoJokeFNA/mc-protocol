@@ -146,8 +146,16 @@ function lookupWrapper(packetId, mcVersion, direction, stateName) {
     const enumName = enumList[packetId];
     if (!enumName) return null;
 
-    // Look up the wrapper class for this enum name
-    const wrapperInfo = app.packetEvents.wrappers[enumName];
+    // Map direction to PE side: serverbound packets are "client" side wrappers,
+    // clientbound packets are "server" side wrappers
+    const peSide = dir === 'serverbound' ? 'client' : dir === 'clientbound' ? 'server' : null;
+
+    // Look up the wrapper class using the contextual key: state_side_ENUM_NAME
+    const ctxKey = peSide ? `${state}_${peSide}_${enumName}` : enumName;
+    let wrapperInfo = app.packetEvents.wrappers[ctxKey];
+
+    // Fallback: try plain enum name (for packets with null wrapper that don't have context)
+    if (!wrapperInfo) wrapperInfo = app.packetEvents.wrappers[enumName];
 
     return {
         enumName,
