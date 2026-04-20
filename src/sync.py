@@ -67,12 +67,31 @@ def fetch_all_commits() -> list[dict]:
 
 
 def classify_version(version: str) -> str:
-    """Classifies a version string as stable, prerelease, or snapshot."""
-    if "-pre" in version.lower() or "-rc" in version.lower():
+    """Classifies a version string as stable, prerelease, or snapshot.
+
+    Handles multiple naming conventions:
+      - Pre-releases: "1.21.2-pre1", "1.21.2-rc1"
+      - Old snapshots: "24w45a", "22w44a"
+      - New snapshots: "26.1-snapshot-1", "25.2-snapshot.3"
+      - Stable: "1.20.5", "1.21.4"
+    """
+    v = version.lower()
+    if "-pre" in v or "-rc" in v:
         return "prerelease"
-    if re.match(r"\d{2}w\d+[a-z]", version, re.IGNORECASE):
+    if "-snapshot" in v:
+        return "snapshot"
+    if re.match(r"\d{2}w\d+[a-z]", v):
         return "snapshot"
     return "stable"
+
+
+def is_valid_version(version: str) -> bool:
+    """Checks if a version string is a real version, not a template placeholder."""
+    if not version or version.startswith("$") or version.startswith("{"):
+        return False
+    if version.lower() in ("version", "unknown", "test", "example"):
+        return False
+    return True
 
 
 def extract_versions(commits: list[dict]) -> list[dict]:
@@ -88,6 +107,9 @@ def extract_versions(commits: list[dict]) -> list[dict]:
             continue
 
         version = m.group(1).strip()
+        if not is_valid_version(version):
+            print(f"  Skipping invalid version string: '{version}'")
+            continue
         date_str = commit["commit"]["committer"]["date"]
         versions.append({
             "version": version,

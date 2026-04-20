@@ -5,6 +5,8 @@ on:
     branches: [ "gh-pages" ]
     paths:
       - "index.html"
+      - "styles.css"
+      - "script.js"
       - "data/**"
   workflow_dispatch:
 
