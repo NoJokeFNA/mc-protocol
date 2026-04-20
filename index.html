@@ -1,0 +1,2230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>mc-protocol · diff</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0d12;
+    --bg-elev: #12151c;
+    --bg-elev-2: #181c25;
+    --bg-hover: #1e232e;
+    --border: #242a36;
+    --border-muted: #1a1f28;
+    --text: #e4e8ef;
+    --text-muted: #8590a1;
+    --text-subtle: #5b6573;
+    --accent: #4c8dff;
+    --accent-fg: #7aabff;
+    --added: #3ecf75;
+    --added-bg: rgba(62,207,117,0.12);
+    --added-border: rgba(62,207,117,0.35);
+    --removed: #ff5f57;
+    --removed-bg: rgba(255,95,87,0.12);
+    --removed-border: rgba(255,95,87,0.35);
+    --modified: #4c8dff;
+    --modified-bg: rgba(76,141,255,0.12);
+    --modified-border: rgba(76,141,255,0.35);
+    --renamed: #ffb340;
+    --renamed-bg: rgba(255,179,64,0.12);
+    --renamed-border: rgba(255,179,64,0.35);
+    --relocated: #c78bff;
+    --relocated-bg: rgba(199,139,255,0.12);
+    --relocated-border: rgba(199,139,255,0.35);
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'Inter', -apple-system, system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  code, .mono { font-family: var(--mono); }
+  button, input, select { font-family: inherit; }
+  ::selection { background: var(--accent); color: white; }
+
+  header {
+    background: var(--bg-elev);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  .brand-logo {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--accent), var(--relocated));
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: white; font-size: 15px;
+    box-shadow: 0 2px 8px rgba(76,141,255,0.3);
+  }
+  .brand small {
+    color: var(--text-muted); font-weight: 400;
+    font-size: 10px;
+    display: block;
+    margin-top: 1px;
+  }
+
+  .picker {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+  }
+  .picker select {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 6px;
+    outline: none;
+    cursor: pointer;
+    min-width: 110px;
+  }
+  .picker select:hover { background: var(--bg-hover); }
+  .picker select:focus { background: var(--bg-hover); box-shadow: 0 0 0 2px var(--accent); }
+  .picker select option { background: var(--bg-elev); color: var(--text); }
+  .picker .arrow { color: var(--text-muted); font-size: 14px; user-select: none; padding: 0 2px; }
+  .picker-label {
+    font-size: 9px; font-weight: 700;
+    color: var(--text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 0 4px;
+  }
+
+  .spacer { flex: 1; }
+
+  .toggle {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    transition: all .15s;
+    user-select: none;
+  }
+  .toggle:hover { color: var(--text); border-color: var(--text-subtle); }
+  .toggle.on {
+    background: rgba(76,141,255,0.1);
+    border-color: var(--accent);
+    color: var(--accent-fg);
+  }
+  .toggle input { display: none; }
+
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--bg-elev-2);
+    color: var(--text-muted);
+  }
+  .status-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-subtle); }
+  .status-pill.ok .dot { background: var(--added); box-shadow: 0 0 6px var(--added); }
+  .status-pill.loading .dot { background: var(--renamed); animation: pulse 1s infinite; }
+  .status-pill.error .dot { background: var(--removed); }
+  @keyframes pulse { 0%,100% {opacity:1} 50% {opacity:.3} }
+
+  .summary {
+    background: var(--bg-elev);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  }
+
+  .sticky-bar {
+    position: sticky;
+    top: 57px;
+    z-index: 40;
+    background: var(--bg);
+  }
+  .sum-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+    user-select: none;
+  }
+  .sum-chip:hover { background: var(--bg-hover); filter: brightness(1.15); }
+  .sum-chip.active {
+    box-shadow: inset 0 0 0 1.5px currentColor;
+    filter: brightness(1.2);
+  }
+  .sum-chip .num { font-family: var(--mono); font-size: 14px; font-weight: 700; }
+  .sum-chip .lbl { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .sum-chip .filter-hint {
+    font-size: 9px;
+    color: var(--text-subtle);
+    opacity: 0;
+    transition: opacity .15s;
+    margin-left: -2px;
+  }
+  .sum-chip:hover .filter-hint { opacity: 1; }
+  .sum-chip.active .lbl::after {
+    content: ' ✕';
+    font-size: 10px;
+    opacity: 0.7;
+  }
+  .sum-chip.added    { color: var(--added);    border-color: var(--added-border); }
+  .sum-chip.removed  { color: var(--removed);  border-color: var(--removed-border); }
+  .sum-chip.modified { color: var(--modified); border-color: var(--modified-border); }
+  .sum-chip.renamed  { color: var(--renamed);  border-color: var(--renamed-border); }
+  .sum-chip.relocated{ color: var(--relocated);border-color: var(--relocated-border); }
+
+  .sum-sep { flex: 1; }
+  .sum-meta { font-family: var(--mono); font-size: 11px; color: var(--text-muted); display: flex; gap: 14px; flex-wrap: wrap; }
+  .sum-meta strong { color: var(--text); font-weight: 600; }
+
+  .filters {
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  }
+  .search-box {
+    flex: 1; min-width: 240px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 12px 7px 34px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    outline: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%238590a1'><path d='M11.5 7a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Zm-.82 4.74a6 6 0 1 1 1.06-1.06l3.04 3.04a.75.75 0 1 1-1.06 1.06l-3.04-3.04Z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: 12px center;
+    background-size: 14px;
+  }
+  .search-box:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(76,141,255,0.15); }
+
+  .state-filter { display: flex; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; padding: 2px; gap: 1px; }
+  .state-filter button {
+    background: none; border: none;
+    color: var(--text-muted);
+    padding: 5px 11px;
+    font-size: 11px;
+    font-family: var(--mono);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all .1s;
+  }
+  .state-filter button:hover { color: var(--text); }
+  .state-filter button.active { background: var(--bg-hover); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+
+  /* ———————————————————————————— ACTION BUTTONS ———————————————————————————— */
+  .actions {
+    display: flex; gap: 4px; align-items: center;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2px;
+  }
+  .actions button {
+    background: none; border: none;
+    color: var(--text-muted);
+    padding: 5px 10px;
+    font-size: 11px;
+    font-family: var(--mono);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all .1s;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .actions button:hover { color: var(--text); background: var(--bg-hover); }
+  .actions button kbd {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 0 4px;
+    border-radius: 2px;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-subtle);
+  }
+  .actions .sep { width: 1px; height: 18px; background: var(--border-muted); margin: 0 2px; }
+
+  /* Focused packet (keyboard nav) */
+  .pkt.focused {
+    background: rgba(76,141,255,0.08);
+    box-shadow: inset 2px 0 0 var(--accent), inset 0 0 0 1px rgba(76,141,255,0.2);
+  }
+  .pkt.focused.expanded { background: rgba(76,141,255,0.1); }
+
+  main { padding: 14px 20px; max-width: 1600px; margin: 0 auto; }
+  .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 980px) { .columns { grid-template-columns: 1fr; } }
+  .col { display: flex; flex-direction: column; min-width: 0; }
+  .col-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 10px 10px 0 0;
+    border-bottom: none;
+  }
+  .col-header .arrow-big {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 3px 10px;
+    border-radius: 4px;
+  }
+  .col-header.cb .arrow-big { background: rgba(199,139,255,0.15); color: var(--relocated); }
+  .col-header.sb .arrow-big { background: rgba(76,141,255,0.15); color: var(--accent-fg); }
+  .col-header .title { font-family: var(--mono); font-weight: 600; font-size: 13px; }
+  .col-header .count { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--text-muted); background: var(--bg-elev-2); padding: 2px 8px; border-radius: 10px; }
+
+  .col-body {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-top: 1px solid var(--border-muted);
+    border-radius: 0 0 10px 10px;
+    overflow: hidden;
+  }
+
+  .state-group { border-bottom: 1px solid var(--border-muted); }
+  .state-group:last-child { border-bottom: none; }
+  .state-group-head {
+    padding: 6px 14px;
+    background: var(--bg-elev-2);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-muted);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .state-group-head .name-change { color: var(--renamed); font-weight: 500; }
+
+  .pkt {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-muted);
+    cursor: pointer;
+    transition: background .08s;
+    border-left: 3px solid transparent;
+  }
+  .pkt:last-child { border-bottom: none; }
+  .pkt:hover { background: rgba(255,255,255,0.015); }
+  .pkt.expanded { background: rgba(76,141,255,0.04); }
+  .pkt.added    { border-left-color: var(--added); }
+  .pkt.removed  { border-left-color: var(--removed); }
+  .pkt.modified { border-left-color: var(--modified); }
+  .pkt.renamed  { border-left-color: var(--renamed); }
+  .pkt.relocated{ border-left-color: var(--relocated); }
+
+  .pkt-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+  .pkt-id {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--text-muted);
+    min-width: 40px;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .pkt-id.id-change { color: var(--relocated); border-color: var(--relocated-border); background: var(--relocated-bg); }
+  .pkt-id .old { color: var(--removed); text-decoration: line-through; opacity: .7; margin-right: 3px; }
+  .pkt-id .arr { color: var(--text-subtle); margin: 0 2px; }
+  .pkt-id .new { color: var(--added); }
+
+  .pkt-name {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .pkt-name .old-name { color: var(--removed); text-decoration: line-through; opacity: .7; margin-right: 5px; font-size: 12px; }
+  .pkt-name .arr { color: var(--text-subtle); margin: 0 4px; }
+
+  .pkt-tags { display: flex; gap: 4px; flex-shrink: 0; }
+  .pkt-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 6px;
+    border-radius: 3px;
+    line-height: 1.3;
+  }
+  .pkt-tag.added    { background: var(--added-bg);    color: var(--added); }
+  .pkt-tag.removed  { background: var(--removed-bg);  color: var(--removed); }
+  .pkt-tag.modified { background: var(--modified-bg); color: var(--modified); }
+  .pkt-tag.renamed  { background: var(--renamed-bg);  color: var(--renamed); }
+  .pkt-tag.relocated{ background: var(--relocated-bg);color: var(--relocated); }
+
+  .pkt-preview {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    margin-left: 50px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .pkt-preview .pv-item { display: inline-flex; align-items: center; gap: 4px; }
+  .pkt-preview .add-dot { color: var(--added); }
+  .pkt-preview .rem-dot { color: var(--removed); }
+  .pkt-preview .chg-dot { color: var(--modified); }
+
+  .pkt-details { display: none; margin-top: 10px; padding: 10px 0 4px 50px; border-top: 1px dashed var(--border); }
+  .pkt.expanded .pkt-details { display: block; }
+
+  .field-table { font-family: var(--mono); font-size: 11.5px; width: 100%; }
+  .ft-head {
+    display: grid;
+    grid-template-columns: 30px 22px 1fr 1.4fr;
+    gap: 10px;
+    padding: 4px 8px;
+    color: var(--text-subtle);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border-muted);
+    margin-bottom: 2px;
+  }
+  .ft-row {
+    display: grid;
+    grid-template-columns: 30px 22px 1fr 1.4fr;
+    gap: 10px;
+    padding: 3px 8px;
+    align-items: baseline;
+    border-radius: 3px;
+    word-break: break-word;
+  }
+  .ft-row.ft-added   { background: var(--added-bg); }
+  .ft-row.ft-removed { background: var(--removed-bg); }
+  .ft-row.ft-changed { background: var(--renamed-bg); }
+  .ft-row .idx { color: var(--text-subtle); text-align: right; font-size: 10px; }
+  .ft-row .sign { font-weight: 700; font-size: 11px; }
+  .ft-row.ft-added .sign { color: var(--added); }
+  .ft-row.ft-removed .sign { color: var(--removed); }
+  .ft-row.ft-changed .sign { color: var(--renamed); }
+  .ft-row .name { color: var(--text); font-weight: 500; }
+  .ft-row .type { color: var(--text-muted); }
+  .ft-row.ft-added .type { color: var(--added); }
+  .ft-row.ft-removed .type { color: var(--removed); }
+  .ft-row.ft-removed .name, .ft-row.ft-removed .type {
+    text-decoration: line-through;
+    opacity: 0.85;
+  }
+  .ft-row.ft-changed .type-before { color: var(--removed); text-decoration: line-through; opacity: 0.75; font-size: 10.5px; display: block; }
+  .ft-row.ft-changed .type-after  { color: var(--added); display: block; }
+
+  .meta-change {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    background: var(--bg-elev-2);
+    border-radius: 5px;
+    display: flex; gap: 16px; flex-wrap: wrap;
+  }
+  .meta-change strong { color: var(--text); font-weight: 600; }
+  .meta-change .old { color: var(--removed); text-decoration: line-through; opacity: .75; }
+  .meta-change .new { color: var(--added); }
+
+  .loader-full { padding: 80px 20px; text-align: center; color: var(--text-muted); grid-column: 1 / -1; }
+  .loader-full .spinner { width: 32px; height: 32px; margin: 0 auto 14px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loader-full .sub { font-family: var(--mono); font-size: 11px; margin-top: 6px; }
+
+  .empty-col { padding: 40px 20px; text-align: center; color: var(--text-subtle); font-size: 12px; }
+
+  .error-banner {
+    background: var(--removed-bg);
+    border: 1px solid var(--removed-border);
+    color: var(--text);
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin: 14px 20px;
+    font-size: 13px;
+  }
+  .error-banner strong { color: var(--removed); }
+
+  .hint {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-subtle);
+    padding: 0 20px 20px;
+    text-align: center;
+  }
+  .hint kbd {
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+  }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-subtle); }
+
+  /* ———————————————————————————— RAW TOGGLE PER PACKET ———————————————————————————— */
+  .pkt-view-toggle {
+    display: inline-flex;
+    margin-bottom: 8px;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px;
+    gap: 1px;
+  }
+  .pkt-view-toggle button {
+    background: none; border: none;
+    color: var(--text-muted);
+    padding: 3px 9px;
+    font-size: 10px;
+    font-family: var(--mono);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .pkt-view-toggle button:hover { color: var(--text); }
+  .pkt-view-toggle button.active { background: var(--bg); color: var(--text); }
+
+  .raw-view {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .raw-col {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .raw-col-head {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 5px 10px;
+    background: var(--bg-elev-2);
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .raw-col-head.before { color: var(--removed); }
+  .raw-col-head.after  { color: var(--added); }
+  .raw-col-head .ver { color: var(--text); opacity: .8; margin-left: 6px; }
+  .raw-col pre {
+    padding: 10px 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text);
+    max-height: 400px;
+  }
+  .raw-col pre em {
+    color: var(--text-subtle);
+    font-style: italic;
+  }
+
+  @media (max-width: 720px) {
+    .raw-view { grid-template-columns: 1fr; }
+  }
+
+  /* ———————————————————————————— VIA-CHAIN STEPS ———————————————————————————— */
+  .chain-step {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: var(--bg-elev-2);
+    border-left: 2px solid var(--border);
+    border-radius: 0 4px 4px 0;
+    position: relative;
+  }
+  .chain-step.chain-added   { border-left-color: var(--added); }
+  .chain-step.chain-removed { border-left-color: var(--removed); }
+  .chain-step.chain-modified{ border-left-color: var(--modified); }
+  .chain-step.chain-renamed { border-left-color: var(--renamed); }
+  .chain-step.chain-relocated{border-left-color: var(--relocated); }
+
+  .chain-step-head {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+  }
+  .chain-step-head .step-ver {
+    color: var(--text);
+    font-weight: 700;
+  }
+  .chain-step-head .step-arrow {
+    color: var(--text-subtle);
+  }
+  .chain-step-head .pkt-tag {
+    margin-left: auto;
+  }
+
+  .chain-step-body {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .chain-step-body .change {
+    display: block;
+    padding: 2px 0;
+  }
+  .chain-step-body .change.add { color: var(--added); }
+  .chain-step-body .change.rem { color: var(--removed); }
+  .chain-step-body .change.chg { color: var(--renamed); }
+  .chain-step-body .change.meta { color: var(--modified); }
+
+  .chain-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent-fg);
+    background: rgba(76,141,255,0.12);
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 8px;
+    font-weight: 700;
+  }
+
+  /* ———————————————————————————— EXPORT MENU ———————————————————————————— */
+  .export-wrap { position: relative; display: inline-block; }
+  .export-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    min-width: 200px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    z-index: 60;
+    display: none;
+    overflow: hidden;
+  }
+  .export-menu.open { display: block; }
+  .export-menu button {
+    display: block;
+    width: 100%;
+    background: none; border: none;
+    color: var(--text);
+    padding: 8px 12px;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .export-menu button:hover { background: var(--bg-hover); }
+  .export-menu button small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 10px;
+    margin-top: 2px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  /* Reorder indicator in preview */
+  .pkt-preview .reorder-dot { color: var(--renamed); }
+
+  /* ———————————————————————————— TOOLTIPS ———————————————————————————— */
+  .has-tip { position: relative; }
+  .has-tip .tip {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1f28;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+    line-height: 1.5;
+    width: max-content;
+    max-width: 320px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    z-index: 70;
+    pointer-events: none;
+    white-space: normal;
+  }
+  .has-tip .tip::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-bottom-color: #1a1f28;
+  }
+  .has-tip:hover .tip { display: block; }
+  .has-tip .tip strong { color: var(--accent-fg); font-weight: 600; }
+  .has-tip .tip code {
+    background: var(--bg);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 11px;
+    color: var(--text);
+  }
+
+  /* ———————————————————————————— SUMMARY TEXT ———————————————————————————— */
+  .summary-text {
+    background: var(--bg-elev);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    display: none;
+  }
+  .summary-text span { margin: 0 2px; }
+  .summary-text .hi { color: var(--text); font-weight: 600; }
+  .summary-text .hi-add { color: var(--added); font-weight: 600; }
+  .summary-text .hi-rem { color: var(--removed); font-weight: 600; }
+  .summary-text .hi-mod { color: var(--modified); font-weight: 600; }
+  .summary-text .hi-ren { color: var(--renamed); font-weight: 600; }
+  .summary-text .hi-rel { color: var(--relocated); font-weight: 600; }
+
+  /* ———————————————————————————— COLLAPSIBLE STATE GROUPS ———————————————————————————— */
+  .state-group-head {
+    cursor: pointer;
+    user-select: none;
+    transition: background .1s;
+  }
+  .state-group-head:hover { background: var(--bg-hover); }
+  .state-group-head .chevron {
+    display: inline-block;
+    transition: transform .15s;
+    font-size: 10px;
+    color: var(--text-subtle);
+    margin-right: 6px;
+  }
+  .state-group.collapsed .state-group-body { display: none; }
+  .state-group.collapsed .state-group-head .chevron { transform: rotate(-90deg); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-logo">Δ</div>
+    <div>
+      mc-protocol
+      <small>packet diff tool</small>
+    </div>
+  </div>
+
+  <div class="picker">
+    <span class="picker-label">from</span>
+    <select id="fromSelect"><option>loading…</option></select>
+    <span class="arrow">→</span>
+    <span class="picker-label">to</span>
+    <select id="toSelect"><option>loading…</option></select>
+  </div>
+
+  <label class="toggle has-tip" id="includePreToggle">
+    <input type="checkbox"/>include pre-releases
+    <span class="tip">Show <strong>pre-releases</strong> (-pre1, -rc1) and <strong>snapshots</strong> (24w45a) in the version dropdowns. By default, only stable releases are shown.</span>
+  </label>
+  <label class="toggle has-tip" id="breakingToggle">
+    <input type="checkbox"/>only breaking
+    <span class="tip">Hide cosmetic changes and show only <strong>functional breaking changes</strong>: packets that were <strong>added</strong>, <strong>removed</strong>, or <strong>modified</strong> (field types/count changed). Pure renames and ID relocations are hidden since they don't affect packet parsing logic.</span>
+  </label>
+  <label class="toggle has-tip" id="viaChainToggle">
+    <input type="checkbox"/>via chain
+    <span class="tip">Instead of comparing just the two selected versions directly, load <strong>every intermediate version</strong> between them and show a <strong>step-by-step evolution</strong> per packet. Useful when porting across multiple versions — you'll see exactly <em>when</em> each change happened, not just the end result.</span>
+  </label>
+
+  <div class="spacer"></div>
+
+  <div class="status-pill loading" id="statusPill"><span class="dot"></span><span id="statusText">loading…</span></div>
+</header>
+
+<div class="sticky-bar" id="stickyBar">
+<div class="summary" id="summary" style="display:none">
+  <div class="sum-chip added has-tip" data-tag="added"><span class="num" id="cntAdded">0</span><span class="lbl">added</span><span class="filter-hint">filter</span>
+    <span class="tip"><strong>Added</strong> — completely new packets that didn't exist in the previous version. These need new <code>PacketWrapper</code> implementations.<br><br>Click to show only added packets.</span>
+  </div>
+  <div class="sum-chip removed has-tip" data-tag="removed"><span class="num" id="cntRemoved">0</span><span class="lbl">removed</span><span class="filter-hint">filter</span>
+    <span class="tip"><strong>Removed</strong> — packets that were deleted. Existing handlers for these should be removed or guarded with version checks.<br><br>Click to show only removed packets.</span>
+  </div>
+  <div class="sum-chip modified has-tip" data-tag="modified"><span class="num" id="cntModified">0</span><span class="lbl">modified</span><span class="filter-hint">filter</span>
+    <span class="tip"><strong>Modified</strong> — packets where field types changed, fields were added/removed, or field order changed. These are the most common porting tasks.<br><br>Click to show only modified packets.</span>
+  </div>
+  <div class="sum-chip renamed has-tip" data-tag="renamed"><span class="num" id="cntRenamed">0</span><span class="lbl">renamed</span><span class="filter-hint">filter</span>
+    <span class="tip"><strong>Renamed</strong> — same packet structure, different name. Usually cosmetic (e.g. "Packet" suffix removed). No functional impact on wire protocol.<br><br>Click to show only renamed packets.</span>
+  </div>
+  <div class="sum-chip relocated has-tip" data-tag="relocated"><span class="num" id="cntRelocated">0</span><span class="lbl">relocated</span><span class="filter-hint">filter</span>
+    <span class="tip"><strong>Relocated</strong> — same packet, same fields, but assigned a different <strong>packet ID</strong> (e.g. 0x1D → 0x1F). The ID mapping table needs updating but the packet structure is unchanged.<br><br>Click to show only relocated packets.</span>
+  </div>
+  <div class="sum-sep"></div>
+  <div class="sum-meta">
+    <span>protocol <strong id="protoRange">?</strong></span>
+    <span id="daysRange">—</span>
+    <span id="unchangedCount">—</span>
+  </div>
+</div>
+
+<div class="summary-text" id="summaryText"></div>
+
+<div class="filters" id="filters" style="display:none">
+  <input class="search-box" id="searchBox" placeholder="search packet name or field…" />
+  <div class="state-filter" id="stateFilter">
+    <button class="active" data-state="all">all states</button>
+    <button data-state="handshake">handshake</button>
+    <button data-state="status">status</button>
+    <button data-state="login">login</button>
+    <button data-state="configuration">config</button>
+    <button data-state="play">play / game</button>
+  </div>
+  <div class="actions">
+    <button id="expandAllBtn" title="Expand all visible packets">expand <kbd>⇧E</kbd></button>
+    <button id="collapseAllBtn" title="Collapse all packets">collapse <kbd>⇧C</kbd></button>
+    <span class="sep"></span>
+    <div class="export-wrap">
+      <button id="exportBtn" title="Export current diff as JSON">export ↓</button>
+      <div class="export-menu" id="exportMenu">
+        <button data-export="structured">Structured JSON<small>Full diff tree with groups & sections</small></button>
+        <button data-export="flat">Flat JSON<small>Array of packets, easier for scripts</small></button>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /sticky-bar -->
+
+<main>
+  <div id="mainContent">
+    <div class="loader-full">
+      <div class="spinner"></div>
+      <div>Fetching version history…</div>
+      <div class="sub" id="loaderSub">talking to github</div>
+    </div>
+  </div>
+</main>
+
+<div class="hint">
+  <kbd>j</kbd>/<kbd>k</kbd> navigate · <kbd>enter</kbd> toggle · <kbd>g</kbd>/<kbd>G</kbd> top/bottom · <kbd>⇧E</kbd>/<kbd>⇧C</kbd> expand/collapse all · <kbd>/</kbd> search · <kbd>esc</kbd> close
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════════════════════════════════ */
+const DATA_BASE = 'data';
+
+const app = {
+  versions: [],                    // from versions.json
+  versionCache: new Map(),         // sha -> parsed version data (from JSON files)
+  fromSha: null,
+  toSha: null,
+  currentDiff: null,
+  currentVersions: null,
+  filter: { tag: 'all', state: 'all', search: '', breaking: false },
+  includePre: false,
+  viaChain: false,
+  focusedPktEl: null,
+  pktViewMode: new Map(),
+  suppressUrlUpdate: false,
+};
+
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DATA LOADING — static JSON files, no API calls
+   ═══════════════════════════════════════════════════════════════════════════ */
+async function loadVersionIndex() {
+  setStatus('loading', 'loading version index…');
+  const resp = await fetch(`${DATA_BASE}/versions.json`);
+  if (!resp.ok) throw new Error(`Failed to load versions.json: ${resp.status}`);
+  const data = await resp.json();
+  // Sort by date ascending
+  const versions = (data.versions || []).sort((a, b) => a.date.localeCompare(b.date));
+  return versions.map(v => ({
+    version: v.version,
+    sha: v.sha,
+    short: v.sha.slice(0, 7),
+    date: new Date(v.date),
+    kind: v.kind,
+    protocol: v.protocol,
+    file: v.file,
+  }));
+}
+
+async function loadVersionData(versionInfo) {
+  if (app.versionCache.has(versionInfo.sha)) return app.versionCache.get(versionInfo.sha);
+  const url = `${DATA_BASE}/${versionInfo.file}`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`Failed to load ${versionInfo.file}: ${resp.status}`);
+  const data = await resp.json();
+  app.versionCache.set(versionInfo.sha, data);
+  return data;
+}
+
+function unescHtml(s) {
+  return String(s).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DIFF
+   ═══════════════════════════════════════════════════════════════════════════ */
+const stateKey = sec => (sec.stateName || '').toLowerCase();
+const dirKey   = sec => (sec.direction || '').toLowerCase();
+
+function groupBy(arr, keyFn) {
+  const out = {};
+  for (const x of arr) { const k = keyFn(x); (out[k] = out[k] || []).push(x); }
+  return out;
+}
+
+function diffFields(bFields, aFields) {
+  const bMap = new Map(bFields.map(f => [f.name.toLowerCase(), f]));
+  const rows = [];
+  let hasChanges = false;
+  const seen = new Set();
+  for (const f of aFields) {
+    const k = f.name.toLowerCase();
+    seen.add(k);
+    const b = bMap.get(k);
+    if (!b) { rows.push({ state: 'added', after: f }); hasChanges = true; }
+    else {
+      const typeChanged = b.full !== f.full;
+      rows.push({ state: typeChanged ? 'changed' : 'same', before: b, after: f });
+      if (typeChanged) hasChanges = true;
+    }
+  }
+  for (const f of bFields) {
+    const k = f.name.toLowerCase();
+    if (!seen.has(k)) { rows.push({ state: 'removed', before: f }); hasChanges = true; }
+  }
+
+  // Detect reordering: for fields present in both, check if their positions changed
+  // Position = integer index in the array (not the "idx" string which can be weird)
+  const reorderedFields = [];
+  const bPositions = new Map(); bFields.forEach((f, i) => bPositions.set(f.name.toLowerCase(), i));
+  const aPositions = new Map(); aFields.forEach((f, i) => aPositions.set(f.name.toLowerCase(), i));
+
+  // Account for additions/removals shifting positions: we compare only the SUBSEQUENCE
+  // of common field names. If their relative order differs, that's a genuine reorder.
+  const commonInBeforeOrder = bFields.filter(f => aPositions.has(f.name.toLowerCase()));
+  const commonInAfterOrder  = aFields.filter(f => bPositions.has(f.name.toLowerCase()));
+  if (commonInBeforeOrder.length === commonInAfterOrder.length && commonInBeforeOrder.length > 1) {
+    for (let i = 0; i < commonInBeforeOrder.length; i++) {
+      if (commonInBeforeOrder[i].name.toLowerCase() !== commonInAfterOrder[i].name.toLowerCase()) {
+        reorderedFields.push({
+          name: commonInAfterOrder[i].name,
+          beforeIdx: commonInBeforeOrder.findIndex(f => f.name.toLowerCase() === commonInAfterOrder[i].name.toLowerCase()),
+          afterIdx: i,
+        });
+      }
+    }
+  }
+
+  return { rows, hasChanges, reorderedFields };
+}
+
+function makeStateGroup(bSec, aSec, direction, totals) {
+  const g = {
+    direction,
+    stateName: (aSec || bSec).stateName,
+    oldStateName: (bSec && aSec && bSec.stateName !== aSec.stateName) ? bSec.stateName : null,
+    packets: [],
+  };
+  const bPackets = bSec ? bSec.packets : [];
+  const aPackets = aSec ? aSec.packets : [];
+  const norm = p => p.name.toLowerCase().replace(/[\s\-_]+/g, '');
+  const bMap = new Map(bPackets.map(p => [norm(p), p]));
+  const aMap = new Map(aPackets.map(p => [norm(p), p]));
+  const seen = new Set();
+
+  for (const [k, a] of aMap) {
+    if (bMap.has(k)) {
+      seen.add(k);
+      const b = bMap.get(k);
+      const fd = diffFields(b.fields, a.fields);
+      const idChanged = b.id !== a.id;
+      const nameChanged = b.name !== a.name;
+      const dirChanged = b.dir !== a.dir;
+      let tag;
+      if (fd.hasChanges || dirChanged) tag = 'modified';
+      else if (fd.reorderedFields && fd.reorderedFields.length > 0) tag = 'modified';
+      else if (nameChanged) tag = 'renamed';
+      else if (idChanged) tag = 'relocated';
+      else tag = 'unchanged';
+      g.packets.push({ before: b, after: a, tag, fieldDiff: fd, idChanged, nameChanged, dirChanged });
+      totals[tag]++;
+    }
+  }
+  for (const [k, a] of aMap) {
+    if (!seen.has(k) && !bMap.has(k)) {
+      g.packets.push({ before: null, after: a, tag: 'added', fieldDiff: null });
+      totals.added++;
+    }
+  }
+  for (const [k, b] of bMap) {
+    if (!aMap.has(k)) {
+      g.packets.push({ before: b, after: null, tag: 'removed', fieldDiff: null });
+      totals.removed++;
+    }
+  }
+  g.packets.sort((x, y) => (x.after?.id ?? x.before?.id ?? 999) - (y.after?.id ?? y.before?.id ?? 999));
+  return g;
+}
+
+function diffProtocol(before, after) {
+  const totals = { added: 0, removed: 0, modified: 0, renamed: 0, relocated: 0, unchanged: 0 };
+  const bByDir = groupBy(before.sections, dirKey);
+  const aByDir = groupBy(after.sections,  dirKey);
+  const allDirs = new Set([...Object.keys(bByDir), ...Object.keys(aByDir)]);
+  const groups = [];
+
+  for (const dir of allDirs) {
+    const bSecs = bByDir[dir] || [];
+    const aSecs = aByDir[dir] || [];
+    const bByState = new Map(bSecs.map(s => [stateKey(s), s]));
+    const aByState = new Map(aSecs.map(s => [stateKey(s), s]));
+    const handled = new Set();
+    for (const [key, aSec] of aByState) {
+      if (bByState.has(key)) {
+        groups.push(makeStateGroup(bByState.get(key), aSec, dir, totals));
+        handled.add(key);
+      }
+    }
+    const unmatchedBefore = [...bByState.entries()].filter(([k]) => !aByState.has(k)).map(([,v]) => v);
+    const unmatchedAfter  = [...aByState.entries()].filter(([k]) => !handled.has(k)).map(([,v]) => v);
+    const usedAfter = new Set();
+    for (const b of unmatchedBefore) {
+      const match = unmatchedAfter.find(a => !usedAfter.has(a));
+      if (match) { usedAfter.add(match); groups.push(makeStateGroup(b, match, dir, totals)); }
+      else groups.push(makeStateGroup(b, null, dir, totals));
+    }
+    for (const a of unmatchedAfter) {
+      if (!usedAfter.has(a)) groups.push(makeStateGroup(null, a, dir, totals));
+    }
+  }
+
+  const stateOrder = ['handshake', 'handshaking', 'status', 'login', 'configuration', 'config', 'play', 'game'];
+  groups.sort((a, b) => {
+    const ai = stateOrder.indexOf(stateKey({ stateName: a.stateName }));
+    const bi = stateOrder.indexOf(stateKey({ stateName: b.stateName }));
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+  return { groups, totals, before, after };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHAIN DIFF — shows each intermediate step for each packet between two versions
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Computes chain between fromSha and toSha by walking every intermediate version
+ * and producing per-packet step entries. Returns a diff-like structure where each
+ * packet carries a `chain` array: [{version, stepTag, delta}] describing each hop.
+ */
+async function diffProtocolChain(fromV, toV, intermediates) {
+  // intermediates is the full ordered list including endpoints: [fromV, mid1, mid2, …, toV]
+  // Parse all readmes in parallel
+  const parsed = await Promise.all(intermediates.map(async v => {
+    const data = await loadVersionData(v);
+    return { version: v, parsed: data };
+  }));
+
+  // For each adjacent pair, compute a diff
+  const adjacentDiffs = [];
+  for (let i = 0; i < parsed.length - 1; i++) {
+    adjacentDiffs.push({
+      from: parsed[i].version,
+      to: parsed[i+1].version,
+      diff: diffProtocol(parsed[i].parsed, parsed[i+1].parsed),
+    });
+  }
+
+  // Build a packet identity tracker across the chain:
+  // For each packet in the final version, walk backwards through the chain
+  // to figure out what happened to it over time. Use normalized-name tracking
+  // but update the "tracked name" when a rename is detected, so we can follow
+  // a packet across rename steps.
+  const beforeFinal = parsed[0].parsed;
+  const afterFinal  = parsed[parsed.length - 1].parsed;
+  const totalDiff = diffProtocol(beforeFinal, afterFinal);
+
+  // For each packet in the total diff, attach its chain history
+  for (const group of totalDiff.groups) {
+    for (const pkt of group.packets) {
+      if (pkt.tag === 'unchanged') continue;
+      pkt.chain = buildPacketChain(pkt, adjacentDiffs);
+    }
+  }
+
+  totalDiff.isChain = true;
+  totalDiff.chainSteps = parsed.length - 1;
+  totalDiff.chainVersions = intermediates;
+  return totalDiff;
+}
+
+/**
+ * For a single packet in the overall diff, walk the adjacent diffs and find
+ * every step where THIS packet changed. Identity matching: start from the
+ * current packet's final name/id and walk backwards, updating the identity
+ * as we encounter renames.
+ */
+function buildPacketChain(packet, adjacentDiffs) {
+  const steps = [];
+  // Identity we're tracking, updated as we walk
+  let trackedName = (packet.after || packet.before).name.toLowerCase().replace(/[\s\-_]+/g, '');
+  let trackedDir  = (packet.after || packet.before).dir;
+
+  // Walk adjacent diffs from latest back to earliest
+  // For each step, find a packet matching our tracked identity and record the change
+  for (let i = adjacentDiffs.length - 1; i >= 0; i--) {
+    const { from, to, diff } = adjacentDiffs[i];
+    let found = null;
+    let foundGroup = null;
+    for (const g of diff.groups) {
+      for (const p of g.packets) {
+        const nm = (p.after || p.before).name.toLowerCase().replace(/[\s\-_]+/g, '');
+        const dr = (p.after || p.before).dir;
+        // Match by "after" identity because we're walking backwards
+        if (p.after) {
+          const afterNm = p.after.name.toLowerCase().replace(/[\s\-_]+/g, '');
+          if (afterNm === trackedName && (!trackedDir || !p.after.dir || p.after.dir === trackedDir)) {
+            found = p; foundGroup = g;
+            break;
+          }
+        } else if (!p.after && p.before) {
+          // Removed packet — matches if tracked name equals its before name
+          const beforeNm = p.before.name.toLowerCase().replace(/[\s\-_]+/g, '');
+          if (beforeNm === trackedName) { found = p; foundGroup = g; break; }
+        }
+      }
+      if (found) break;
+    }
+
+    if (found && found.tag !== 'unchanged') {
+      steps.unshift({
+        from, to,
+        tag: found.tag,
+        packet: found,
+        groupName: foundGroup.stateName,
+      });
+      // Update identity for next (earlier) step: use the "before" name if it changed
+      if (found.before && found.after && found.nameChanged) {
+        trackedName = found.before.name.toLowerCase().replace(/[\s\-_]+/g, '');
+      }
+    }
+  }
+  return steps;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   URL STATE
+   ═══════════════════════════════════════════════════════════════════════════ */
+function encodeState() {
+  const p = new URLSearchParams();
+  if (app.fromSha) p.set('from', app.fromSha.slice(0, 10));
+  if (app.toSha)   p.set('to',   app.toSha.slice(0, 10));
+  if (app.filter.tag !== 'all')     p.set('tag', app.filter.tag);
+  if (app.filter.state !== 'all')   p.set('state', app.filter.state);
+  if (app.filter.search)            p.set('q', app.filter.search);
+  if (app.filter.breaking)          p.set('breaking', '1');
+  if (app.viaChain)                 p.set('chain', '1');
+  if (app.includePre)               p.set('pre', '1');
+  return p.toString();
+}
+
+function updateUrl(replace = false) {
+  if (app.suppressUrlUpdate) return;
+  const qs = encodeState();
+  const url = qs ? `${location.pathname}?${qs}` : location.pathname;
+  if (replace) history.replaceState(null, '', url);
+  else if (location.search !== (qs ? `?${qs}` : '')) {
+    history.pushState(null, '', url);
+  }
+}
+
+function readUrl() {
+  const p = new URLSearchParams(location.search);
+  return {
+    fromPrefix: p.get('from'),
+    toPrefix: p.get('to'),
+    tag: p.get('tag') || 'all',
+    state: p.get('state') || 'all',
+    q: p.get('q') || '',
+    breaking: p.get('breaking') === '1',
+    chain: p.get('chain') === '1',
+    pre: p.get('pre') === '1',
+  };
+}
+
+function resolveShaByPrefix(prefix) {
+  if (!prefix) return null;
+  const match = app.versions.find(v => v.sha.startsWith(prefix));
+  return match ? match.sha : null;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EXPORT
+   ═══════════════════════════════════════════════════════════════════════════ */
+function exportDiffAsJson(format) {
+  if (!app.currentDiff || !app.currentVersions) return;
+  const { from, to } = app.currentVersions;
+
+  const base = {
+    tool: 'mc-protocol-diff',
+    exportedAt: new Date().toISOString(),
+    from: { version: from.version, sha: from.sha, date: from.date.toISOString(), protocol: app.currentDiff.before.protocol },
+    to:   { version: to.version,   sha: to.sha,   date: to.date.toISOString(),   protocol: app.currentDiff.after.protocol },
+    totals: app.currentDiff.totals,
+    chain: app.currentDiff.isChain ? {
+      steps: app.currentDiff.chainSteps,
+      versions: app.currentDiff.chainVersions.map(v => v.version),
+    } : null,
+  };
+
+  let payload;
+  if (format === 'structured') {
+    payload = {
+      ...base,
+      groups: app.currentDiff.groups.map(g => ({
+        direction: g.direction,
+        stateName: g.stateName,
+        oldStateName: g.oldStateName,
+        packets: g.packets.filter(p => p.tag !== 'unchanged').map(serializePacket),
+      })).filter(g => g.packets.length),
+    };
+  } else {
+    // Flat: single array of packets with direction/state embedded
+    const flat = [];
+    for (const g of app.currentDiff.groups) {
+      for (const p of g.packets) {
+        if (p.tag === 'unchanged') continue;
+        flat.push({
+          direction: g.direction,
+          state: g.stateName,
+          oldState: g.oldStateName,
+          ...serializePacket(p),
+        });
+      }
+    }
+    payload = { ...base, packets: flat };
+  }
+
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const slug = `${from.version}_to_${to.version}`.replace(/[^a-zA-Z0-9._-]/g, '_');
+  a.href = url;
+  a.download = `mc-protocol-diff-${slug}-${format}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+
+function serializePacket(p) {
+  const out = {
+    tag: p.tag,
+    idHex: (p.after || p.before).idHex,
+    name: (p.after || p.before).name,
+    direction: (p.after || p.before).dir,
+  };
+  if (p.before) out.before = { idHex: p.before.idHex, name: p.before.name, fields: p.before.fields, noFields: p.before.noFields };
+  if (p.after)  out.after  = { idHex: p.after.idHex,  name: p.after.name,  fields: p.after.fields,  noFields: p.after.noFields };
+  if (p.idChanged)   out.idChanged = true;
+  if (p.nameChanged) out.nameChanged = true;
+  if (p.dirChanged)  out.dirChanged = true;
+  if (p.fieldDiff) out.fieldDelta = {
+    added:   p.fieldDiff.rows.filter(r => r.state === 'added').map(r => r.after),
+    removed: p.fieldDiff.rows.filter(r => r.state === 'removed').map(r => r.before),
+    changed: p.fieldDiff.rows.filter(r => r.state === 'changed').map(r => ({ name: r.after.name, before: r.before.full, after: r.after.full })),
+    reordered: p.fieldDiff.reorderedFields || [],
+  };
+  if (p.chain) out.chain = p.chain.map(s => ({
+    from: s.from.version, to: s.to.version, tag: s.tag,
+    packet: serializePacket(s.packet),
+  }));
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RAW MARKDOWN — reads from pre-extracted rawBlocks in the version JSON
+   ═══════════════════════════════════════════════════════════════════════════ */
+async function getRawPacketMarkdown(versionInfo, direction, packetName) {
+  if (!versionInfo) return null;
+  try {
+    const data = await loadVersionData(versionInfo);
+    if (!data.rawBlocks) return null;
+    // Build the lookup key: "direction|normalizedname"
+    const dir = (direction || 'unknown').toLowerCase();
+    const nameKey = packetName.toLowerCase().replace(/[\s\-_]+/g, '');
+    const key = `${dir}|${nameKey}`;
+    const md = data.rawBlocks[key];
+    return md ? { markdown: md } : null;
+  } catch { return null; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RENDERING
+   ═══════════════════════════════════════════════════════════════════════════ */
+function setStatus(kind, text) {
+  $('#statusPill').className = 'status-pill ' + kind;
+  $('#statusText').textContent = text;
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function populateVersionPickers() {
+  const visible = app.versions.filter(v => app.includePre || v.kind === 'stable');
+  function opts(vers) {
+    const byKind = { stable: [], prerelease: [], snapshot: [] };
+    for (const v of vers) byKind[v.kind].push(v);
+    let html = '';
+    if (byKind.stable.length) html += `<optgroup label="Stable">${byKind.stable.map(v => `<option value="${v.sha}">${esc(v.version)}</option>`).join('')}</optgroup>`;
+    if (byKind.prerelease.length) html += `<optgroup label="Pre-releases / RCs">${byKind.prerelease.map(v => `<option value="${v.sha}">${esc(v.version)}</option>`).join('')}</optgroup>`;
+    if (byKind.snapshot.length) html += `<optgroup label="Snapshots">${byKind.snapshot.map(v => `<option value="${v.sha}">${esc(v.version)}</option>`).join('')}</optgroup>`;
+    return html;
+  }
+  const html = opts([...visible].reverse());
+  $('#fromSelect').innerHTML = html;
+  $('#toSelect').innerHTML = html;
+
+  const stables = visible.filter(v => v.kind === 'stable');
+  if (stables.length >= 2) {
+    const newest = stables[stables.length - 1];
+    const prev = stables[stables.length - 2];
+    app.fromSha = prev.sha;
+    app.toSha = newest.sha;
+    $('#fromSelect').value = prev.sha;
+    $('#toSelect').value = newest.sha;
+  }
+}
+
+async function runDiff() {
+  if (!app.fromSha || !app.toSha) return;
+  if (app.fromSha === app.toSha) {
+    $('#mainContent').innerHTML = `<div class="loader-full" style="padding:60px"><div style="color:var(--text-muted)">Choose two different versions to compare.</div></div>`;
+    $('#summary').style.display = 'none';
+    $('#filters').style.display = 'none';
+    return;
+  }
+
+  const fromV = app.versions.find(v => v.sha === app.fromSha);
+  const toV = app.versions.find(v => v.sha === app.toSha);
+  if (!fromV || !toV) return;
+
+  // Determine chronological ordering — ensure we load the older one as "before"
+  const [olderV, newerV] = fromV.date <= toV.date ? [fromV, toV] : [toV, fromV];
+
+  setStatus('loading', app.viaChain ? 'loading chain…' : 'loading readmes…');
+
+  // For chain mode, collect all versions between (and including) olderV and newerV
+  let intermediates = [olderV, newerV];
+  if (app.viaChain) {
+    // Include stable + pre-releases depending on the includePre setting, but ALWAYS
+    // stick with what's in the dropdowns (the same visibility filter)
+    const kinds = app.includePre ? ['stable', 'prerelease', 'snapshot'] : ['stable'];
+    intermediates = app.versions.filter(v =>
+      kinds.includes(v.kind) && v.date >= olderV.date && v.date <= newerV.date
+    );
+    // Safety: only cap at truly excessive lengths (readmes are fetched via raw.githubusercontent.com, not API)
+    if (intermediates.length > 100) {
+      $('#mainContent').innerHTML = `<div class="error-banner"><strong>Chain too long:</strong> ${intermediates.length} intermediate versions. Try narrowing the range.</div>`;
+      setStatus('error', 'chain too long');
+      return;
+    }
+  }
+
+  $('#mainContent').innerHTML = `<div class="loader-full">
+    <div class="spinner"></div>
+    <div>Diffing <strong>${esc(olderV.version)}</strong> → <strong>${esc(newerV.version)}</strong>${app.viaChain ? ` <span style="color:var(--accent-fg)">via ${intermediates.length - 2} intermediate version${intermediates.length - 2 === 1 ? '' : 's'}</span>` : ''}</div>
+    <div class="sub">fetching ${intermediates.length} readme file${intermediates.length === 1 ? '' : 's'}</div>
+  </div>`;
+
+  try {
+    let diff;
+    if (app.viaChain && intermediates.length > 2) {
+      diff = await diffProtocolChain(olderV, newerV, intermediates);
+    } else {
+      const [before, after] = await Promise.all([loadVersionData(olderV), loadVersionData(newerV)]);
+      diff = diffProtocol(before, after);
+    }
+    app.currentDiff = diff;
+    app.currentVersions = { from: olderV, to: newerV, intermediates };
+    renderDiff(olderV, newerV, diff);
+    const statusLabel = app.viaChain && intermediates.length > 2
+      ? `${olderV.version} → ${newerV.version} (chain, ${intermediates.length - 1} steps)`
+      : `${olderV.version} → ${newerV.version}`;
+    setStatus('ok', statusLabel);
+    updateUrl(true); // replaceState to normalize URL after resolve
+  } catch (e) {
+    console.error(e);
+    $('#mainContent').innerHTML = `<div class="error-banner"><strong>Error:</strong> ${esc(e.message)}</div>`;
+    setStatus('error', 'failed');
+  }
+}
+
+function renderDiff(fromV, toV, diff) {
+  $('#summary').style.display = 'flex';
+  $('#filters').style.display = 'flex';
+
+  $('#cntAdded').textContent = diff.totals.added;
+  $('#cntRemoved').textContent = diff.totals.removed;
+  $('#cntModified').textContent = diff.totals.modified;
+  $('#cntRenamed').textContent = diff.totals.renamed;
+  $('#cntRelocated').textContent = diff.totals.relocated;
+
+  const pb = diff.before.protocol, pa = diff.after.protocol;
+  $('#protoRange').textContent = pb && pa ? (pb === pa ? pb : `${pb} → ${pa}`) : '?';
+  const days = Math.round((toV.date - fromV.date) / (1000*60*60*24));
+  $('#daysRange').innerHTML = `<strong>${Math.abs(days)}</strong> days apart`;
+  $('#unchangedCount').innerHTML = `<strong>${diff.totals.unchanged}</strong> unchanged`;
+
+  // Summary text
+  generateSummaryText(diff);
+
+  const cb = diff.groups.filter(g => (g.direction || '').toLowerCase() === 'clientbound');
+  const sb = diff.groups.filter(g => (g.direction || '').toLowerCase() === 'serverbound');
+
+  $('#mainContent').innerHTML = `
+    <div class="columns">
+      <div class="col">
+        <div class="col-header cb">
+          <span class="arrow-big">S → C</span>
+          <span class="title">Clientbound</span>
+          <span class="count" id="cbCount">—</span>
+        </div>
+        <div class="col-body" id="cbBody">${renderColumn(cb)}</div>
+      </div>
+      <div class="col">
+        <div class="col-header sb">
+          <span class="arrow-big">C → S</span>
+          <span class="title">Serverbound</span>
+          <span class="count" id="sbCount">—</span>
+        </div>
+        <div class="col-body" id="sbBody">${renderColumn(sb)}</div>
+      </div>
+    </div>
+  `;
+  bindPacketClicks();
+  bindCollapsibleGroups();
+  applyFilters();
+}
+
+/* ——— Summary text generator ——— */
+function generateSummaryText(diff) {
+  const el = $('#summaryText');
+  const t = diff.totals;
+  const total = t.added + t.removed + t.modified + t.renamed + t.relocated;
+  if (total === 0) {
+    el.style.display = 'none';
+    return;
+  }
+
+  const parts = [];
+
+  // Relocated summary
+  if (t.relocated > 0) {
+    parts.push(`<span class="hi-rel">${t.relocated} packet${t.relocated===1?'':'s'} relocated</span><span>(ID shift only, no structural changes)</span>`);
+  }
+
+  // Modified summary — analyze the most common field-level change patterns
+  if (t.modified > 0) {
+    const patterns = analyzeModificationPatterns(diff);
+    let modPart = `<span class="hi-mod">${t.modified} modified</span>`;
+    if (patterns.length) {
+      modPart += `<span>— ${patterns.join(', ')}</span>`;
+    }
+    parts.push(modPart);
+  }
+
+  // Added
+  if (t.added > 0) {
+    const addedNames = collectNames(diff, 'added');
+    const nameStr = addedNames.length <= 4
+      ? addedNames.map(n => `<code>${esc(n)}</code>`).join(', ')
+      : addedNames.slice(0,3).map(n => `<code>${esc(n)}</code>`).join(', ') + ` + ${addedNames.length-3} more`;
+    parts.push(`<span class="hi-add">${t.added} new</span><span>(${nameStr})</span>`);
+  }
+
+  // Removed
+  if (t.removed > 0) {
+    const removedNames = collectNames(diff, 'removed');
+    const nameStr = removedNames.length <= 3
+      ? removedNames.map(n => `<code>${esc(n)}</code>`).join(', ')
+      : removedNames.slice(0,2).map(n => `<code>${esc(n)}</code>`).join(', ') + ` + ${removedNames.length-2} more`;
+    parts.push(`<span class="hi-rem">${t.removed} removed</span><span>(${nameStr})</span>`);
+  }
+
+  // Renamed
+  if (t.renamed > 0) {
+    parts.push(`<span class="hi-ren">${t.renamed} renamed</span><span>(cosmetic, no wire-protocol impact)</span>`);
+  }
+
+  // Section renames
+  const sectionRenames = diff.groups.filter(g => g.oldStateName).map(g => `${g.oldStateName} → ${g.stateName}`);
+  if (sectionRenames.length) {
+    parts.push(`<span class="hi">section rename${sectionRenames.length===1?'':'s'}:</span><span>${sectionRenames.map(s => `<code>${esc(s)}</code>`).join(', ')}</span>`);
+  }
+
+  el.innerHTML = parts.join('<span style="color:var(--border);margin:0 6px">·</span>');
+  el.style.display = parts.length ? 'block' : 'none';
+}
+
+function analyzeModificationPatterns(diff) {
+  const typeChanges = new Map(); // "X → Y" pattern frequency
+  let fieldAdds = 0, fieldRemoves = 0, fieldReorders = 0;
+
+  for (const g of diff.groups) {
+    for (const p of g.packets) {
+      if (p.tag !== 'modified' || !p.fieldDiff) continue;
+      for (const r of p.fieldDiff.rows) {
+        if (r.state === 'changed') {
+          // Extract the "wrapping" pattern: e.g. MobEffect → Holder<MobEffect> = "Holder wrapping"
+          const before = r.before.full, after = r.after.full;
+          if (after.startsWith('Holder<') && after.includes(before.replace(/</g,''))) {
+            typeChanges.set('Holder<> wrapping', (typeChanges.get('Holder<> wrapping')||0)+1);
+          } else if (after.startsWith('Optional<') && after.includes(before)) {
+            typeChanges.set('Optional<> wrapping', (typeChanges.get('Optional<> wrapping')||0)+1);
+          } else {
+            typeChanges.set('type changes', (typeChanges.get('type changes')||0)+1);
+          }
+        } else if (r.state === 'added') fieldAdds++;
+        else if (r.state === 'removed') fieldRemoves++;
+      }
+      if (p.fieldDiff.reorderedFields && p.fieldDiff.reorderedFields.length) fieldReorders++;
+    }
+  }
+
+  const patterns = [];
+  for (const [pattern, count] of [...typeChanges.entries()].sort((a,b) => b[1]-a[1])) {
+    patterns.push(`${count}× ${pattern}`);
+  }
+  if (fieldAdds) patterns.push(`${fieldAdds} field${fieldAdds===1?'':'s'} added`);
+  if (fieldRemoves) patterns.push(`${fieldRemoves} field${fieldRemoves===1?'':'s'} removed`);
+  if (fieldReorders) patterns.push(`${fieldReorders} reordered`);
+
+  return patterns;
+}
+
+function collectNames(diff, tag) {
+  const names = [];
+  for (const g of diff.groups) {
+    for (const p of g.packets) {
+      if (p.tag === tag) names.push((p.after || p.before).name);
+    }
+  }
+  return names;
+}
+
+function renderColumn(groups) {
+  if (!groups.length) return `<div class="empty-col">No changes in this direction</div>`;
+  const rendered = groups.map(renderStateGroup).filter(Boolean).join('');
+  return rendered || `<div class="empty-col">No changes in this direction</div>`;
+}
+
+function renderStateGroup(g) {
+  const packets = g.packets.filter(p => p.tag !== 'unchanged');
+  if (!packets.length) return '';
+  const name = g.oldStateName
+    ? `${esc(g.oldStateName)} <span class="name-change">→ ${esc(g.stateName)}</span>`
+    : esc(g.stateName);
+  return `<div class="state-group" data-state="${esc(g.stateName.toLowerCase())}">
+    <div class="state-group-head"><span class="chevron">▼</span><span>${name}</span><span style="margin-left:auto">${packets.length} changed</span></div>
+    <div class="state-group-body">${packets.map(renderPacket).join('')}</div>
+  </div>`;
+}
+
+function renderPacket(p) {
+  const ref = p.after || p.before;
+  let idHtml;
+  if (p.idChanged) {
+    idHtml = `<span class="pkt-id id-change"><span class="old">${p.before.idHex}</span><span class="arr">→</span><span class="new">${p.after.idHex}</span></span>`;
+  } else {
+    idHtml = `<span class="pkt-id">${ref.idHex}</span>`;
+  }
+
+  let nameHtml;
+  if (p.nameChanged && p.before && p.after) {
+    nameHtml = `<span class="pkt-name"><span class="old-name">${esc(p.before.name)}</span><span class="arr">→</span>${esc(p.after.name)}</span>`;
+  } else {
+    nameHtml = `<span class="pkt-name">${esc(ref.name)}</span>`;
+  }
+
+  const preview = renderPreview(p);
+
+  const searchBits = [
+    (p.after || p.before).name,
+    (p.before || p.after).name,
+    ...((p.after && p.after.fields) || []).map(f => `${f.name} ${f.full}`),
+    ...((p.before && p.before.fields) || []).map(f => `${f.name} ${f.full}`),
+  ];
+
+  // Stable UID = direction + current ID + normalized name. Used for URL expand state.
+  const dir = (ref.dir || '').toLowerCase().replace(/\s+/g, '');
+  const uidName = ref.name.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const pktUid = `${dir}-${ref.idHex}-${uidName}`;
+
+  const chainBadge = p.chain && p.chain.length
+    ? p.chain.length === 1
+      ? `<span class="chain-badge">⛓ in ${esc(p.chain[0].to.version)}</span>`
+      : `<span class="chain-badge">⛓ ${p.chain.length} steps</span>`
+    : '';
+
+  return `<div class="pkt ${p.tag}" data-tag="${p.tag}" data-pkt-uid="${esc(pktUid)}" data-search="${esc(searchBits.join(' ').toLowerCase())}">
+    <div class="pkt-row">
+      ${idHtml}
+      ${nameHtml}
+      <span class="pkt-tags">
+        <span class="pkt-tag ${p.tag}">${p.tag}</span>
+        ${p.idChanged && p.tag !== 'relocated' ? '<span class="pkt-tag relocated">id</span>' : ''}
+        ${chainBadge}
+      </span>
+    </div>
+    ${preview}
+    <div class="pkt-details">${renderDetails(p)}</div>
+  </div>`;
+}
+
+function renderPreview(p) {
+  if (p.tag === 'added' && p.after) {
+    const n = p.after.fields.length;
+    return `<div class="pkt-preview"><span class="pv-item add-dot">+ new packet</span><span class="pv-item">${p.after.noFields ? 'no fields' : n + ' field' + (n===1?'':'s')}</span></div>`;
+  }
+  if (p.tag === 'removed' && p.before) {
+    const n = p.before.fields.length;
+    return `<div class="pkt-preview"><span class="pv-item rem-dot">− removed</span><span class="pv-item">had ${p.before.noFields ? 'no fields' : n + ' field' + (n===1?'':'s')}</span></div>`;
+  }
+  if (p.fieldDiff) {
+    const added = p.fieldDiff.rows.filter(r => r.state === 'added').length;
+    const removed = p.fieldDiff.rows.filter(r => r.state === 'removed').length;
+    const changed = p.fieldDiff.rows.filter(r => r.state === 'changed').length;
+    const reordered = (p.fieldDiff.reorderedFields || []).length;
+    const parts = [];
+    if (added)   parts.push(`<span class="pv-item add-dot">+${added} field${added===1?'':'s'}</span>`);
+    if (removed) parts.push(`<span class="pv-item rem-dot">−${removed} field${removed===1?'':'s'}</span>`);
+    if (changed) parts.push(`<span class="pv-item chg-dot">${changed} type${changed===1?'':'s'} changed</span>`);
+    if (reordered) parts.push(`<span class="pv-item reorder-dot">⇵ ${reordered} reordered</span>`);
+    if (p.idChanged) parts.push(`<span class="pv-item">id ${p.before.idHex}→${p.after.idHex}</span>`);
+    if (p.dirChanged) parts.push(`<span class="pv-item">dir ${p.before.dir||'—'}→${p.after.dir||'—'}</span>`);
+    if (!parts.length) return '';
+    return `<div class="pkt-preview">${parts.join('')}</div>`;
+  }
+  return '';
+}
+
+function renderDetails(p) {
+  const meta = [];
+  if (p.idChanged)   meta.push(`id: <span class="old">${p.before.idHex}</span> → <span class="new">${p.after.idHex}</span>`);
+  if (p.nameChanged) meta.push(`name: <span class="old">${esc(p.before.name)}</span> → <span class="new">${esc(p.after.name)}</span>`);
+  if (p.dirChanged)  meta.push(`direction: <span class="old">${esc(p.before.dir||'—')}</span> → <span class="new">${esc(p.after.dir||'—')}</span>`);
+  if (p.fieldDiff && p.fieldDiff.reorderedFields && p.fieldDiff.reorderedFields.length) {
+    const names = p.fieldDiff.reorderedFields.map(r => esc(r.name)).join(', ');
+    meta.push(`reordered: <span style="color:var(--renamed)">${names}</span>`);
+  }
+  const metaHtml = meta.length ? `<div class="meta-change">${meta.join(' · ')}</div>` : '';
+
+  // View toggle: structured vs raw markdown
+  const viewToggle = `<div class="pkt-view-toggle">
+    <button class="active" data-view="structured">structured</button>
+    <button data-view="raw">raw markdown</button>
+  </div>`;
+
+  let tableHtml;
+  if (p.tag === 'added')        tableHtml = renderFieldTableFlat(p.after.fields, 'added', p.after.noFields);
+  else if (p.tag === 'removed') tableHtml = renderFieldTableFlat(p.before.fields, 'removed', p.before.noFields);
+  else if (p.fieldDiff)         tableHtml = renderFieldTableDiff(p.fieldDiff.rows);
+  else                          tableHtml = '<em style="color:var(--text-subtle);font-family:var(--mono);font-size:11px">(no field changes)</em>';
+
+  // Chain steps if present
+  const chainHtml = (p.chain && p.chain.length) ? renderChainSteps(p) : '';
+
+  return metaHtml + viewToggle + `<div class="pkt-view-structured">${tableHtml}${chainHtml}</div><div class="pkt-view-raw" style="display:none"><em style="color:var(--text-subtle);font-family:var(--mono);font-size:11px">click to load raw markdown…</em></div>`;
+}
+
+function renderChainSteps(p) {
+  if (!p.chain.length) return '';
+  const label = p.chain.length === 1
+    ? `changed in <strong style="color:var(--text)">${esc(p.chain[0].from.version)} → ${esc(p.chain[0].to.version)}</strong>`
+    : `evolution over ${p.chain.length} steps`;
+  let html = `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border)">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">${label}</div>`;
+  for (const step of p.chain) {
+    html += renderChainStep(step);
+  }
+  html += `</div>`;
+  return html;
+}
+
+function renderChainStep(step) {
+  const sp = step.packet;
+  const ref = sp.after || sp.before;
+  const changes = [];
+
+  if (sp.idChanged) changes.push(`<span class="change meta">id: ${sp.before.idHex} → ${sp.after.idHex}</span>`);
+  if (sp.nameChanged) changes.push(`<span class="change meta">name: ${esc(sp.before.name)} → ${esc(sp.after.name)}</span>`);
+  if (sp.dirChanged) changes.push(`<span class="change meta">direction: ${esc(sp.before.dir||'—')} → ${esc(sp.after.dir||'—')}</span>`);
+
+  if (sp.tag === 'added') {
+    changes.push(`<span class="change add">+ added as new packet</span>`);
+  } else if (sp.tag === 'removed') {
+    changes.push(`<span class="change rem">− removed</span>`);
+  } else if (sp.fieldDiff) {
+    for (const r of sp.fieldDiff.rows) {
+      if (r.state === 'added') changes.push(`<span class="change add">+ ${esc(r.after.name)}: ${esc(r.after.full)}</span>`);
+      else if (r.state === 'removed') changes.push(`<span class="change rem">− ${esc(r.before.name)}: ${esc(r.before.full)}</span>`);
+      else if (r.state === 'changed') changes.push(`<span class="change chg">~ ${esc(r.after.name)}: ${esc(r.before.full)} → ${esc(r.after.full)}</span>`);
+    }
+    if (sp.fieldDiff.reorderedFields && sp.fieldDiff.reorderedFields.length) {
+      changes.push(`<span class="change chg">⇵ reordered: ${sp.fieldDiff.reorderedFields.map(r => esc(r.name)).join(', ')}</span>`);
+    }
+  }
+
+  return `<div class="chain-step chain-${sp.tag}">
+    <div class="chain-step-head">
+      <span class="step-ver">${esc(step.from.version)}</span>
+      <span class="step-arrow">→</span>
+      <span class="step-ver">${esc(step.to.version)}</span>
+      <span class="pkt-tag ${sp.tag}">${sp.tag}</span>
+    </div>
+    <div class="chain-step-body">${changes.join('')}</div>
+  </div>`;
+}
+
+function renderFieldTableFlat(fields, kind, noFields) {
+  if (noFields) return '<em style="color:var(--text-subtle);font-family:var(--mono);font-size:11px">Packet has no fields</em>';
+  if (!fields.length) return '';
+  const sign = kind === 'added' ? '+' : kind === 'removed' ? '−' : '';
+  const rowClass = kind === 'added' ? 'ft-added' : kind === 'removed' ? 'ft-removed' : '';
+  return `<div class="field-table">
+    <div class="ft-head"><span style="text-align:right">#</span><span></span><span>name</span><span>type</span></div>
+    ${fields.map(f => `<div class="ft-row ${rowClass}">
+      <span class="idx">${esc(f.idx)}</span>
+      <span class="sign">${sign}</span>
+      <span class="name">${esc(f.name)}</span>
+      <span class="type">${esc(f.full)}</span>
+    </div>`).join('')}
+  </div>`;
+}
+
+function renderFieldTableDiff(rows) {
+  if (!rows.length) return '<em style="color:var(--text-subtle);font-family:var(--mono);font-size:11px">no fields</em>';
+  return `<div class="field-table">
+    <div class="ft-head"><span style="text-align:right">#</span><span></span><span>name</span><span>type</span></div>
+    ${rows.map(r => {
+      if (r.state === 'added') return `<div class="ft-row ft-added">
+        <span class="idx">${esc(r.after.idx)}</span><span class="sign">+</span>
+        <span class="name">${esc(r.after.name)}</span><span class="type">${esc(r.after.full)}</span></div>`;
+      if (r.state === 'removed') return `<div class="ft-row ft-removed">
+        <span class="idx">${esc(r.before.idx)}</span><span class="sign">−</span>
+        <span class="name">${esc(r.before.name)}</span><span class="type">${esc(r.before.full)}</span></div>`;
+      if (r.state === 'changed') return `<div class="ft-row ft-changed">
+        <span class="idx">${esc(r.after.idx)}</span><span class="sign">~</span>
+        <span class="name">${esc(r.after.name)}</span>
+        <span class="type"><span class="type-before">${esc(r.before.full)}</span><span class="type-after">${esc(r.after.full)}</span></span></div>`;
+      return `<div class="ft-row">
+        <span class="idx">${esc(r.after.idx)}</span><span class="sign" style="color:var(--text-subtle)">·</span>
+        <span class="name">${esc(r.after.name)}</span><span class="type">${esc(r.after.full)}</span></div>`;
+    }).join('')}
+  </div>`;
+}
+
+function bindPacketClicks() {
+  $$('.pkt').forEach(el => {
+    el.addEventListener('click', async (ev) => {
+      // Don't toggle expand when clicking interactive children
+      if (ev.target.closest('.pkt-view-toggle, .pkt-view-raw, .pkt-view-structured button, a')) return;
+      // If click originated inside the expanded details but not on the pkt-row, don't collapse
+      const row = ev.target.closest('.pkt-row, .pkt-preview');
+      if (!row && el.classList.contains('expanded')) return;
+      el.classList.toggle('expanded');
+    });
+  });
+
+  // Wire up per-packet view toggles (structured/raw)
+  $$('.pkt-view-toggle').forEach(toggle => {
+    toggle.addEventListener('click', async (ev) => {
+      const btn = ev.target.closest('button');
+      if (!btn) return;
+      ev.stopPropagation();
+      const mode = btn.dataset.view;
+      const pkt = toggle.closest('.pkt');
+      toggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+      const structured = pkt.querySelector('.pkt-view-structured');
+      const raw = pkt.querySelector('.pkt-view-raw');
+      if (mode === 'raw') {
+        structured.style.display = 'none';
+        raw.style.display = '';
+        // Lazy-load raw markdown on first request
+        if (raw.dataset.loaded !== '1') {
+          await loadRawIntoPacket(pkt, raw);
+        }
+      } else {
+        structured.style.display = '';
+        raw.style.display = 'none';
+      }
+    });
+  });
+}
+
+async function loadRawIntoPacket(pktEl, rawEl) {
+  const uid = pktEl.dataset.pktUid;
+  // Find the packet in currentDiff to know which section/direction/name to extract
+  if (!app.currentDiff || !app.currentVersions) {
+    rawEl.innerHTML = '<em style="color:var(--text-subtle);font-family:var(--mono);font-size:11px">no diff loaded</em>';
+    return;
+  }
+  // Find packet by uid walking all groups
+  let targetPkt = null, targetGroup = null;
+  for (const g of app.currentDiff.groups) {
+    for (const p of g.packets) {
+      const ref = p.after || p.before;
+      const dir = (ref.dir || '').toLowerCase().replace(/\s+/g, '');
+      const uidName = ref.name.toLowerCase().replace(/[^a-z0-9]+/g, '');
+      if (`${dir}-${ref.idHex}-${uidName}` === uid) { targetPkt = p; targetGroup = g; break; }
+    }
+    if (targetPkt) break;
+  }
+  if (!targetPkt) {
+    rawEl.innerHTML = '<em style="color:var(--text-subtle);font-family:var(--mono);font-size:11px">packet not found</em>';
+    rawEl.dataset.loaded = '1';
+    return;
+  }
+
+  rawEl.innerHTML = '<em style="color:var(--text-subtle);font-family:var(--mono);font-size:11px">loading…</em>';
+  const { from, to } = app.currentVersions;
+
+  // Fetch raw markdown blocks for both versions. Use the most-informative name from each side.
+  const beforeName = targetPkt.before ? targetPkt.before.name : null;
+  const afterName  = targetPkt.after  ? targetPkt.after.name  : null;
+  const beforeStateName = targetGroup.oldStateName || targetGroup.stateName;
+  const afterStateName  = targetGroup.stateName;
+
+  const [beforeRaw, afterRaw] = await Promise.all([
+    beforeName ? getRawPacketMarkdown(from, targetGroup.direction, beforeName) : null,
+    afterName  ? getRawPacketMarkdown(to,   targetGroup.direction, afterName)  : null,
+  ]);
+
+  rawEl.innerHTML = `
+    <div class="raw-view">
+      <div class="raw-col">
+        <div class="raw-col-head before">before<span class="ver">${esc(from.version)}</span></div>
+        <pre>${beforeRaw ? esc(beforeRaw.markdown) : '<em>not present in this version</em>'}</pre>
+      </div>
+      <div class="raw-col">
+        <div class="raw-col-head after">after<span class="ver">${esc(to.version)}</span></div>
+        <pre>${afterRaw ? esc(afterRaw.markdown) : '<em>not present in this version</em>'}</pre>
+      </div>
+    </div>
+  `;
+  rawEl.dataset.loaded = '1';
+}
+
+/* ——— Collapsible state groups ——— */
+function bindCollapsibleGroups() {
+  $$('.state-group-head').forEach(head => {
+    head.addEventListener('click', (e) => {
+      // Don't collapse when clicking inside the group body
+      const group = head.closest('.state-group');
+      group.classList.toggle('collapsed');
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FILTERING
+   ═══════════════════════════════════════════════════════════════════════════ */
+function applyFilters() {
+  const q = app.filter.search;
+  const tag = app.filter.tag;
+  const state = app.filter.state;
+  const breakingOnly = app.filter.breaking;
+  const breakingTags = new Set(['removed', 'modified', 'added']);
+
+  let cbVisible = 0, sbVisible = 0;
+
+  $$('.state-group').forEach(group => {
+    const groupState = group.dataset.state;
+    let groupVisible = 0;
+    group.querySelectorAll('.pkt').forEach(pkt => {
+      const pktTag = pkt.dataset.tag;
+      const searchBlob = pkt.dataset.search;
+      let show = true;
+      if (tag !== 'all' && pktTag !== tag) show = false;
+      if (state !== 'all') {
+        const matches = groupState === state
+          || (state === 'play' && (groupState === 'play' || groupState === 'game'))
+          || (state === 'handshake' && (groupState === 'handshake' || groupState === 'handshaking'))
+          || (state === 'configuration' && (groupState === 'configuration' || groupState === 'config'));
+        if (!matches) show = false;
+      }
+      if (breakingOnly && !breakingTags.has(pktTag)) show = false;
+      if (q && !searchBlob.includes(q)) show = false;
+      pkt.style.display = show ? '' : 'none';
+      if (show) groupVisible++;
+    });
+    group.style.display = groupVisible > 0 ? '' : 'none';
+    if (groupVisible > 0) {
+      const col = group.closest('.col');
+      if (col && col.querySelector('.col-header.cb')) cbVisible += groupVisible;
+      else sbVisible += groupVisible;
+    }
+  });
+
+  const cbEl = $('#cbCount'); if (cbEl) cbEl.textContent = cbVisible;
+  const sbEl = $('#sbCount'); if (sbEl) sbEl.textContent = sbVisible;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EVENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+$('#fromSelect').addEventListener('change', e => { app.fromSha = e.target.value; runDiff(); });
+$('#toSelect').addEventListener('change', e => { app.toSha = e.target.value; runDiff(); });
+
+$('#includePreToggle').addEventListener('click', e => {
+  e.preventDefault();
+  const t = e.currentTarget;
+  app.includePre = !app.includePre;
+  t.classList.toggle('on', app.includePre);
+  t.querySelector('input').checked = app.includePre;
+  populateVersionPickers();
+  runDiff();
+});
+
+$('#breakingToggle').addEventListener('click', e => {
+  e.preventDefault();
+  const t = e.currentTarget;
+  app.filter.breaking = !app.filter.breaking;
+  t.classList.toggle('on', app.filter.breaking);
+  t.querySelector('input').checked = app.filter.breaking;
+  applyFilters();
+  updateUrl();
+});
+
+$('#viaChainToggle').addEventListener('click', e => {
+  e.preventDefault();
+  const t = e.currentTarget;
+  app.viaChain = !app.viaChain;
+  t.classList.toggle('on', app.viaChain);
+  t.querySelector('input').checked = app.viaChain;
+  runDiff();
+});
+
+$('#searchBox').addEventListener('input', e => {
+  app.filter.search = e.target.value.trim().toLowerCase();
+  applyFilters();
+  updateUrl();
+});
+
+$$('#stateFilter button').forEach(b => {
+  b.addEventListener('click', () => {
+    $$('#stateFilter button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    app.filter.state = b.dataset.state;
+    applyFilters();
+    updateUrl();
+  });
+});
+
+$$('.sum-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const tag = chip.dataset.tag;
+    if (app.filter.tag === tag) {
+      app.filter.tag = 'all';
+      chip.classList.remove('active');
+    } else {
+      app.filter.tag = tag;
+      $$('.sum-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+    }
+    applyFilters();
+    updateUrl();
+  });
+});
+
+/* —— Expand / Collapse all —— */
+function expandAll() {
+  $$('.pkt').forEach(p => { if (p.style.display !== 'none') p.classList.add('expanded'); });
+}
+function collapseAll() {
+  $$('.pkt.expanded').forEach(p => p.classList.remove('expanded'));
+}
+$('#expandAllBtn').addEventListener('click', expandAll);
+$('#collapseAllBtn').addEventListener('click', collapseAll);
+
+/* —— Export menu —— */
+$('#exportBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  $('#exportMenu').classList.toggle('open');
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('.export-wrap')) $('#exportMenu').classList.remove('open');
+});
+$$('#exportMenu button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    exportDiffAsJson(btn.dataset.export);
+    $('#exportMenu').classList.remove('open');
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KEYBOARD NAVIGATION
+   ═══════════════════════════════════════════════════════════════════════════ */
+function visiblePackets() {
+  return [...$$('.pkt')].filter(p => p.style.display !== 'none');
+}
+
+function focusPkt(el, opts = { scroll: true }) {
+  $$('.pkt.focused').forEach(p => p.classList.remove('focused'));
+  if (!el) { app.focusedPktEl = null; return; }
+  el.classList.add('focused');
+  app.focusedPktEl = el;
+  if (opts.scroll) {
+    const rect = el.getBoundingClientRect();
+    // Scroll if the focused packet is outside the visible viewport with some margin
+    const topMargin = 180, bottomMargin = window.innerHeight - 60;
+    if (rect.top < topMargin || rect.bottom > bottomMargin) {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }
+}
+
+function moveFocus(delta) {
+  const vis = visiblePackets();
+  if (!vis.length) return;
+  if (!app.focusedPktEl || !vis.includes(app.focusedPktEl)) {
+    focusPkt(delta > 0 ? vis[0] : vis[vis.length - 1]);
+    return;
+  }
+  const idx = vis.indexOf(app.focusedPktEl);
+  const next = Math.max(0, Math.min(vis.length - 1, idx + delta));
+  focusPkt(vis[next]);
+}
+
+document.addEventListener('keydown', e => {
+  const tgt = e.target;
+  const isInput = tgt.tagName === 'INPUT' || tgt.tagName === 'SELECT' || tgt.tagName === 'TEXTAREA';
+  if (isInput) {
+    if (e.key === 'Escape') { tgt.blur(); }
+    return;
+  }
+  // Ignore modifier combos we don't handle (except Shift for E/C)
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  if (e.key === '/') {
+    e.preventDefault(); $('#searchBox').focus();
+  } else if (e.key === 'Escape') {
+    if (app.focusedPktEl && app.focusedPktEl.classList.contains('expanded')) {
+      app.focusedPktEl.classList.remove('expanded');
+    } else if (document.querySelector('.pkt.expanded')) {
+      collapseAll();
+    } else {
+      focusPkt(null);
+    }
+  } else if (e.key === 'j' || e.key === 'ArrowDown') {
+    e.preventDefault(); moveFocus(1);
+  } else if (e.key === 'k' || e.key === 'ArrowUp') {
+    e.preventDefault(); moveFocus(-1);
+  } else if (e.key === 'g') {
+    e.preventDefault();
+    const vis = visiblePackets();
+    if (vis.length) focusPkt(vis[0]);
+  } else if (e.key === 'G') {
+    e.preventDefault();
+    const vis = visiblePackets();
+    if (vis.length) focusPkt(vis[vis.length - 1]);
+  } else if (e.key === 'Enter' || e.key === ' ') {
+    if (app.focusedPktEl) {
+      e.preventDefault();
+      app.focusedPktEl.classList.toggle('expanded');
+    }
+  } else if (e.shiftKey && (e.key === 'E' || e.key === 'e')) {
+    e.preventDefault(); expandAll();
+  } else if (e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+    e.preventDefault(); collapseAll();
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   POPSTATE — browser back/forward restores state without a full reload
+   ═══════════════════════════════════════════════════════════════════════════ */
+window.addEventListener('popstate', async () => {
+  await applyStateFromUrl({ reloadIfVersionsChanged: true });
+});
+
+async function applyStateFromUrl({ reloadIfVersionsChanged = false } = {}) {
+  const url = readUrl();
+
+  // Toggle states
+  const wantPre = url.pre;
+  const wantChain = url.chain;
+  const preChanged = wantPre !== app.includePre;
+  const chainChanged = wantChain !== app.viaChain;
+
+  if (preChanged) {
+    app.includePre = wantPre;
+    $('#includePreToggle').classList.toggle('on', wantPre);
+    $('#includePreToggle input').checked = wantPre;
+    populateVersionPickers();
+  }
+  if (chainChanged) {
+    app.viaChain = wantChain;
+    $('#viaChainToggle').classList.toggle('on', wantChain);
+    $('#viaChainToggle input').checked = wantChain;
+  }
+  app.filter.breaking = url.breaking;
+  $('#breakingToggle').classList.toggle('on', url.breaking);
+  $('#breakingToggle input').checked = url.breaking;
+  app.filter.tag = url.tag;
+  app.filter.state = url.state;
+  app.filter.search = url.q;
+
+  $('#searchBox').value = url.q;
+  $$('#stateFilter button').forEach(b => b.classList.toggle('active', b.dataset.state === url.state));
+  $$('.sum-chip').forEach(c => c.classList.toggle('active', c.dataset.tag === url.tag));
+
+  // Versions
+  const fromSha = resolveShaByPrefix(url.fromPrefix);
+  const toSha = resolveShaByPrefix(url.toPrefix);
+  const versionChanged = (fromSha && fromSha !== app.fromSha) || (toSha && toSha !== app.toSha);
+  if (fromSha) { app.fromSha = fromSha; $('#fromSelect').value = fromSha; }
+  if (toSha)   { app.toSha = toSha;     $('#toSelect').value = toSha; }
+
+  app.suppressUrlUpdate = true;
+  try {
+    if (reloadIfVersionsChanged && (versionChanged || preChanged || chainChanged)) {
+      await runDiff();
+    } else {
+      applyFilters();
+    }
+  } finally {
+    app.suppressUrlUpdate = false;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════════════════════ */
+async function init() {
+  try {
+    app.versions = await loadVersionIndex();
+    if (app.versions.length < 2) {
+      $('#mainContent').innerHTML = `<div class="error-banner">Not enough protocol versions found. Run the sync script first.</div>`;
+      setStatus('error', 'no data');
+      return;
+    }
+
+    // Read URL state BEFORE populating pickers (so includePre is set correctly)
+    const url = readUrl();
+    if (url.pre) {
+      app.includePre = true;
+      $('#includePreToggle').classList.add('on');
+      $('#includePreToggle input').checked = true;
+    }
+    if (url.chain) {
+      app.viaChain = true;
+      $('#viaChainToggle').classList.add('on');
+      $('#viaChainToggle input').checked = true;
+    }
+    if (url.breaking) {
+      app.filter.breaking = true;
+      $('#breakingToggle').classList.add('on');
+      $('#breakingToggle input').checked = true;
+    }
+    app.filter.tag = url.tag;
+    app.filter.state = url.state;
+    app.filter.search = url.q;
+    $('#searchBox').value = url.q;
+    $$('#stateFilter button').forEach(b => b.classList.toggle('active', b.dataset.state === url.state));
+    $$('.sum-chip').forEach(c => c.classList.toggle('active', c.dataset.tag === url.tag));
+
+    populateVersionPickers();
+
+    // Override default versions if URL specified them
+    const fromSha = resolveShaByPrefix(url.fromPrefix);
+    const toSha = resolveShaByPrefix(url.toPrefix);
+    if (fromSha) { app.fromSha = fromSha; $('#fromSelect').value = fromSha; }
+    if (toSha)   { app.toSha = toSha;     $('#toSelect').value = toSha; }
+
+    app.suppressUrlUpdate = true;
+    try {
+      await runDiff();
+    } finally {
+      app.suppressUrlUpdate = false;
+    }
+  } catch (e) {
+    console.error(e);
+    $('#mainContent').innerHTML = `<div class="error-banner"><strong>Failed to load:</strong> ${esc(e.message)}</div>`;
+    setStatus('error', 'failed');
+  }
+}
+
+init();
+</script>
+</body>
+</html>
