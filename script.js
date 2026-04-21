@@ -925,12 +925,22 @@ function renderPacket(p, group) {
         const stateName = group.stateName;
         const lookupRef = p.after || p.before;
         const wi = lookupWrapper(lookupRef.id, toVersion, direction, stateName);
-        if (wi && wi.wrapper) {
-            wrapperBadge = wi.url
-                ? `<a class="wrapper-badge" href="${esc(wi.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${esc(wi.enumName)} (PE ${wi.peVersion.replace(/_/g, '.')})">${esc(wi.wrapper)}</a>`
-                : `<span class="wrapper-badge" title="${esc(wi.enumName)} (PE ${wi.peVersion.replace(/_/g, '.')})">${esc(wi.wrapper)}</span>`;
-        } else if (wi) {
-            wrapperBadge = `<span class="wrapper-badge no-wrapper" title="${esc(wi.enumName)} (PE ${wi.peVersion.replace(/_/g, '.')}) — no wrapper class">${esc(wi.enumName)}</span>`;
+        if (wi) {
+            // Check if PE version is an exact match or a close fallback
+            const mcNorm = toVersion.replace(/-(?:pre|rc|snapshot).*$/i, '').replace(/\./g, '_');
+            const isExact = wi.peVersion === mcNorm;
+
+            if (wi.wrapper) {
+                const cls = isExact ? 'wrapper-badge' : 'wrapper-badge wrapper-approx';
+                const title = isExact
+                    ? `${wi.enumName} — PacketEvents ${wi.peVersion.replace(/_/g, '.')}`
+                    : `${wi.enumName} — mapped from PE ${wi.peVersion.replace(/_/g, '.')} (no exact match for ${toVersion})`;
+                wrapperBadge = wi.url
+                    ? `<a class="${cls}" href="${esc(wi.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${esc(title)}">${esc(wi.wrapper)}</a>`
+                    : `<span class="${cls}" title="${esc(title)}">${esc(wi.wrapper)}</span>`;
+            } else {
+                wrapperBadge = `<span class="wrapper-badge no-wrapper" title="${esc(wi.enumName)} — no wrapper class">${esc(wi.enumName)}</span>`;
+            }
         }
     }
 
@@ -939,12 +949,12 @@ function renderPacket(p, group) {
       ${idHtml}
       ${nameHtml}
       <span class="pkt-tags">
+        ${wrapperBadge}
         <span class="pkt-tag ${p.tag}">${p.tag}</span>
         ${p.idChanged && p.tag !== 'relocated' ? '<span class="pkt-tag relocated">id</span>' : ''}
         ${chainBadge}
       </span>
     </div>
-    ${wrapperBadge ? `<div class="pkt-wrapper">${wrapperBadge}</div>` : ''}
     ${preview}
     <div class="pkt-details">${renderDetails(p)}</div>
   </div>`;

@@ -1364,24 +1364,24 @@ main {
 }
 
 /* ———————————————————————————— PACKETEVENTS WRAPPER BADGE ———————————————————————————— */
-.pkt-wrapper {
-    margin-top: 3px;
-    margin-left: 50px;
-}
-
 .wrapper-badge {
     display: inline-block;
     font-family: var(--mono);
-    font-size: 10px;
-    font-weight: 500;
+    font-size: 9px;
+    font-weight: 600;
     color: var(--text-muted);
     background: var(--bg-elev-2);
     border: 1px solid var(--border);
-    padding: 1px 7px;
+    padding: 2px 6px;
     border-radius: 3px;
     text-decoration: none;
     transition: all .15s;
     cursor: pointer;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
 }
 
 a.wrapper-badge:hover {
@@ -1395,6 +1395,11 @@ a.wrapper-badge:hover {
     color: var(--text-subtle);
     border-style: dashed;
     cursor: default;
+}
+
+.wrapper-badge.wrapper-approx {
+    border-style: dotted;
+    opacity: 0.7;
 }
 
 /* ———————————————————————————— CREDITS FOOTER ———————————————————————————— */
