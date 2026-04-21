@@ -1119,9 +1119,9 @@ function renderChainStep(step) {
    LINKIE — Mojang source lookup for field types
    ═══════════════════════════════════════════════════════════════════════════ */
 const PRIMITIVE_TYPES = new Set([
-    'int', 'long', 'short', 'byte', 'float', 'double', 'boolean', 'void',
-    'int[]', 'long[]', 'short[]', 'byte[]', 'float[]', 'double[]', 'boolean[]',
-    'String', 'String[]', 'UUID', 'FriendlyByteBuf',
+    'int', 'long', 'short', 'byte', 'float', 'double', 'boolean', 'char', 'void',
+    'int[]', 'long[]', 'short[]', 'byte[]', 'float[]', 'double[]', 'boolean[]', 'char[]',
+    'String', 'String[]', 'UUID'
 ]);
 
 function extractBaseType(fullType) {
@@ -1144,7 +1144,7 @@ function extractBaseType(fullType) {
         // Skip common wrappers/containers — we want the domain types
         if (!['Optional', 'List', 'Set', 'Map', 'Collection', 'Holder',
             'Pair', 'Int2ObjectMap', 'Object2IntMap', 'IntList',
-            'EnumSet', 'String', 'UUID', 'FriendlyByteBuf'].includes(t)) {
+            'EnumSet', 'String', 'UUID'].includes(t)) {
             types.push(t);
         }
     }
