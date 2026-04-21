@@ -250,7 +250,8 @@ header {
 
 .sticky-bar {
     position: sticky;
-    top: 57px;
+    /* Variable is set in the JavaScript file */
+    top: var(--header-h, 57px);
     z-index: 40;
     background: var(--bg);
 }
