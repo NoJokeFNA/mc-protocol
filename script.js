@@ -768,6 +768,7 @@ function generateSummaryText(diff) {
     }
 
     const parts = [];
+    let chainLine = '';
 
     // Relocated summary
     if (t.relocated > 0) {
@@ -813,8 +814,56 @@ function generateSummaryText(diff) {
         parts.push(`<span class="hi">section rename${sectionRenames.length === 1 ? '' : 's'}:</span><span>${sectionRenames.map(s => `<code>${esc(s)}</code>`).join(', ')}</span>`);
     }
 
-    el.innerHTML = parts.join('<span style="color:var(--border);margin:0 6px">·</span>');
-    el.style.display = parts.length ? 'block' : 'none';
+    // Chain mode: show the packets with the most intermediate changes (excluding relocated)
+    if (app.viaChain) {
+        const chainRanking = [];
+        const seen = new Set();
+        for (const g of diff.groups) {
+            const dir = (g.direction || '').toLowerCase();
+            const dirLabel = dir === 'clientbound' ? 'S→C' : dir === 'serverbound' ? 'C→S' : '';
+            for (const p of g.packets) {
+                if (!p.chain || p.chain.length <= 1) continue;
+                // Count only meaningful steps (not relocated — those are just ID shifts)
+                const meaningfulSteps = p.chain.filter(s => s.packet.tag !== 'relocated' && s.packet.tag !== 'unchanged').length;
+                if (meaningfulSteps === 0) continue;
+                const ref = p.after || p.before;
+                const uid = `${(ref.dir || '').toLowerCase().replace(/\s+/g, '')}-${ref.idHex}-${ref.name.toLowerCase().replace(/[^a-z0-9]+/g, '')}`;
+                // Deduplicate by uid
+                if (seen.has(uid)) continue;
+                seen.add(uid);
+                chainRanking.push({name: ref.name, dirLabel, steps: meaningfulSteps, uid});
+            }
+        }
+        if (chainRanking.length) {
+            chainRanking.sort((a, b) => b.steps - a.steps);
+            const top = chainRanking.slice(0, 3);
+            const topHtml = top.map(t =>
+                `<code class="chain-top-link" data-uid="${esc(t.uid)}">${esc(t.name)}</code> <span class="chain-dir">${esc(t.dirLabel)}</span> <span class="hi">(${t.steps})</span>`
+            ).join(', ');
+            chainLine = `<div class="summary-text-chain"><span class="hi">most changed:</span> ${topHtml}</div>`;
+        }
+    }
+
+    el.innerHTML = parts.join('<span style="color:var(--border);margin:0 6px">·</span>') + chainLine;
+    el.style.display = (parts.length || chainLine) ? 'block' : 'none';
+
+    // Wire up click-to-scroll for chain ranking links
+    el.querySelectorAll('.chain-top-link').forEach(link => {
+        link.addEventListener('click', () => {
+            const uid = link.dataset.uid;
+            const pktEl = document.querySelector(`.pkt[data-pkt-uid="${CSS.escape(uid)}"]`);
+            if (pktEl) {
+                pktEl.scrollIntoView({behavior: 'smooth', block: 'center'});
+                pktEl.classList.add('expanded');
+                // Brief highlight flash
+                pktEl.style.transition = 'box-shadow .2s';
+                pktEl.style.boxShadow = '0 0 0 2px var(--accent)';
+                setTimeout(() => {
+                    pktEl.style.boxShadow = '';
+                }, 1500);
+            }
+        });
+    });
 }
 
 function analyzeModificationPatterns(diff) {
@@ -1044,10 +1093,11 @@ function renderChainStep(step) {
     } else if (sp.tag === 'removed') {
         changes.push(`<span class="change rem">− removed</span>`);
     } else if (sp.fieldDiff) {
+        const stepVer = step.to.version;
         for (const r of sp.fieldDiff.rows) {
-            if (r.state === 'added') changes.push(`<span class="change add">+ ${esc(r.after.name)}: ${esc(r.after.full)}</span>`);
-            else if (r.state === 'removed') changes.push(`<span class="change rem">− ${esc(r.before.name)}: ${esc(r.before.full)}</span>`);
-            else if (r.state === 'changed') changes.push(`<span class="change chg">~ ${esc(r.after.name)}: ${esc(r.before.full)} → ${esc(r.after.full)}</span>`);
+            if (r.state === 'added') changes.push(`<span class="change add">+ ${esc(r.after.name)}: ${renderTypeWithLink(r.after.full, stepVer)}</span>`);
+            else if (r.state === 'removed') changes.push(`<span class="change rem">− ${esc(r.before.name)}: ${renderTypeWithLink(r.before.full, stepVer)}</span>`);
+            else if (r.state === 'changed') changes.push(`<span class="change chg">~ ${esc(r.after.name)}: ${renderTypeWithLink(r.before.full, stepVer)} → ${renderTypeWithLink(r.after.full, stepVer)}</span>`);
         }
         if (sp.fieldDiff.reorderedFields && sp.fieldDiff.reorderedFields.length) {
             changes.push(`<span class="change chg">⇵ reordered: ${sp.fieldDiff.reorderedFields.map(r => esc(r.name)).join(', ')}</span>`);
@@ -1065,6 +1115,362 @@ function renderChainStep(step) {
   </div>`;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   LINKIE — Mojang source lookup for field types
+   ═══════════════════════════════════════════════════════════════════════════ */
+const PRIMITIVE_TYPES = new Set([
+    'int', 'long', 'short', 'byte', 'float', 'double', 'boolean', 'void',
+    'int[]', 'long[]', 'short[]', 'byte[]', 'float[]', 'double[]', 'boolean[]',
+    'String', 'String[]', 'UUID', 'FriendlyByteBuf',
+]);
+
+function extractBaseType(fullType) {
+    // "Holder<MobEffect>" → "MobEffect"
+    // "Optional<String>" → null (String is primitive)
+    // "Map<ResourceKey<Level>, Advancement>" → "Advancement" (last type arg)
+    // "ClientInformation" → "ClientInformation"
+    // "int" → null (primitive)
+    if (PRIMITIVE_TYPES.has(fullType)) return null;
+
+    // Strip outer generic wrappers to get the innermost meaningful type
+    // But also consider the base type itself
+    const types = [];
+
+    // Extract all type names from the full type string
+    const typeRx = /\b([A-Z][A-Za-z0-9$_]+)\b/g;
+    let m;
+    while ((m = typeRx.exec(fullType)) !== null) {
+        const t = m[1];
+        // Skip common wrappers/containers — we want the domain types
+        if (!['Optional', 'List', 'Set', 'Map', 'Collection', 'Holder',
+            'Pair', 'Int2ObjectMap', 'Object2IntMap', 'IntList',
+            'EnumSet', 'String', 'UUID', 'FriendlyByteBuf'].includes(t)) {
+            types.push(t);
+        }
+    }
+
+    return types.length ? types[0] : null;
+}
+
+function renderTypeWithLink(typeStr, version) {
+    const baseType = extractBaseType(typeStr);
+    if (!baseType) return esc(typeStr);
+
+    // Make the base type clickable within the full type string
+    const escaped = esc(typeStr);
+    const escapedBase = esc(baseType);
+    const versionAttr = version ? ` data-version="${esc(version)}"` : '';
+    return escaped.replace(
+        escapedBase,
+        `<span class="type-link" data-type="${esc(baseType)}"${versionAttr} title="Look up ${esc(baseType)} source via Linkie">${escapedBase}</span>`
+    );
+}
+
+/**
+ * Searches Linkie for a class in a specific version.
+ * Returns { fullClass, version } or null if the version is not available or has no results.
+ */
+async function linkieSearch(typeName, version) {
+    const url = `https://linkieapi.shedaniel.me/api/search?namespace=mojang_raw&query=${encodeURIComponent(typeName)}&version=${encodeURIComponent(version)}&limit=100&allowClasses=true&allowFields=false&allowMethods=false&translateMode=none`;
+    try {
+        const resp = await fetch(url);
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        if (!data.entries || !data.entries.length) return null;
+        const best = data.entries.filter(e => e.t === 'c').sort((a, b) => b.z - a.z)[0];
+        return best ? {fullClass: best.i, version} : null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Fetches Java source from Linkie for a given class and version.
+ * Returns the source text or null if the version errors out.
+ */
+async function linkieSource(fullClass, version) {
+    const url = `https://linkieapi.shedaniel.me/api/source?namespace=mojang_raw&class=${encodeURIComponent(fullClass)}&version=${encodeURIComponent(version)}`;
+    try {
+        const resp = await fetch(url);
+        if (!resp.ok) return null;
+        return await resp.text();
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Builds the list of versions to try for Linkie lookups.
+ *
+ * @param {string} mcVersion - Starting MC version
+ * @param {'backward'|'forward'} direction - Search direction when the starting version fails.
+ *   'backward' (default): try older stable releases (used for main diff "to" version)
+ *   'forward': try newer stable releases first, then older (used for chain steps)
+ */
+function buildVersionFallbackList(mcVersion, direction = 'backward') {
+    const primary = mcVersion.replace(/-(?:pre|rc|snapshot).*$/i, '');
+    const list = [primary];
+
+    if (!app.versions) return list;
+
+    const stables = app.versions
+        .filter(v => v.kind === 'stable')
+        .map(v => v.version);
+
+    // Find where the primary version sits in the sorted list
+    const idx = stables.indexOf(primary);
+
+    if (direction === 'forward') {
+        // Forward: try newer versions first, then older as last resort
+        const newer = idx >= 0 ? stables.slice(idx + 1) : stables.slice();
+        const older = idx >= 0 ? stables.slice(0, idx).reverse() : [];
+        for (const v of newer) {
+            if (v !== primary) list.push(v);
+        }
+        for (const v of older) {
+            if (v !== primary) list.push(v);
+        }
+    } else {
+        // Backward: try older versions (reverse chronological)
+        const older = idx >= 0 ? stables.slice(0, idx).reverse() : stables.slice().reverse();
+        for (const v of older) {
+            if (v !== primary) list.push(v);
+        }
+    }
+
+    return list;
+}
+
+/**
+ * Full Linkie lookup with version fallback on BOTH steps (search + source).
+ * Calls onProgress(step, version) to report what's happening.
+ *
+ * @param {string} typeName - Class name to search for
+ * @param {string} mcVersion - Requested MC version
+ * @param {function} onProgress - Callback: (step, version) => void
+ * @param {'backward'|'forward'} searchDirection - Fallback direction
+ */
+async function linkieLookup(typeName, mcVersion, onProgress, searchDirection = 'backward') {
+    const versions = buildVersionFallbackList(mcVersion, searchDirection);
+    const primaryVersion = versions[0];
+
+    // Step 1: Find the class (search endpoint)
+    let match = null;
+    for (const version of versions) {
+        if (onProgress) onProgress('search', version);
+        match = await linkieSearch(typeName, version);
+        if (match) break;
+    }
+
+    if (!match) {
+        throw new Error(`"${typeName}" not found in any available version`);
+    }
+
+    const searchVersion = match.version;
+
+    // Step 2: Fetch source — also with version fallback
+    // Start from the version where we found the class, then fall back further
+    const sourceVersions = versions.slice(versions.indexOf(searchVersion));
+    let sourceText = null;
+    let sourceVersion = null;
+
+    for (const version of sourceVersions) {
+        if (onProgress) onProgress('source', version);
+        sourceText = await linkieSource(match.fullClass, version);
+        if (sourceText) {
+            sourceVersion = version;
+            break;
+        }
+    }
+
+    if (!sourceText) {
+        throw new Error(`Source for "${typeName}" not available (class found in ${searchVersion} but source fetch failed for all versions)`);
+    }
+
+    return {
+        className: match.fullClass.split('/').pop(),
+        fullPath: match.fullClass.replace(/\//g, '.'),
+        source: sourceText,
+        searchVersion,
+        sourceVersion,
+        requestedVersion: primaryVersion,
+    };
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+    <span class="toast-icon">${type === 'error' ? '⚠' : 'ℹ'}</span>
+    <span class="toast-msg">${esc(message)}</span>
+  `;
+    document.body.appendChild(toast);
+
+    // Trigger entrance animation
+    requestAnimationFrame(() => toast.classList.add('toast-visible'));
+
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        toast.classList.remove('toast-visible');
+        toast.addEventListener('transitionend', () => toast.remove());
+    }, 5000);
+
+    // Click to dismiss early
+    toast.addEventListener('click', () => {
+        toast.classList.remove('toast-visible');
+        toast.addEventListener('transitionend', () => toast.remove());
+    });
+}
+
+/**
+ * Shows a persistent progress toast that can be updated in real-time.
+ * Returns { update(msg), dismiss() }.
+ */
+function showProgressToast(typeName) {
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-progress';
+    toast.innerHTML = `
+    <span class="toast-spinner"></span>
+    <span class="toast-msg">Looking up ${esc(typeName)}…</span>
+  `;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('toast-visible'));
+
+    const msgEl = toast.querySelector('.toast-msg');
+    return {
+        update(msg) {
+            msgEl.textContent = msg;
+        },
+        dismiss() {
+            toast.classList.remove('toast-visible');
+            toast.addEventListener('transitionend', () => toast.remove());
+        },
+    };
+}
+
+/**
+ * Lightweight Java syntax highlighter for the Linkie modal.
+ * Uses single-pass tokenization to avoid interference between patterns.
+ */
+function highlightJava(source) {
+    const keywords = new Set([
+        'abstract', 'assert', 'boolean', 'break', 'byte', 'case', 'catch', 'char',
+        'class', 'const', 'continue', 'default', 'do', 'double', 'else', 'enum',
+        'extends', 'final', 'finally', 'float', 'for', 'goto', 'if', 'implements',
+        'import', 'instanceof', 'int', 'interface', 'long', 'native', 'new',
+        'package', 'private', 'protected', 'public', 'record', 'return', 'short',
+        'static', 'strictfp', 'super', 'switch', 'synchronized', 'this', 'throw',
+        'throws', 'transient', 'try', 'var', 'void', 'volatile', 'while',
+        'true', 'false', 'null', 'sealed', 'permits', 'yield',
+    ]);
+
+    // Single combined regex that matches all token types in priority order.
+    // The first capturing group that matches determines the token type.
+    const rx = /\/\*[\s\S]*?\*\/|\/\/.*$|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|@[A-Za-z_]\w*(?:\.\w+)*|\b(?:0[xX][0-9a-fA-F_]+[lL]?|(?:\d[\d_]*\.?[\d_]*|\.\d[\d_]*)(?:[eE][+-]?\d+)?[fFdDlL]?|\d[\d_]*[lL]?)\b|\b[A-Za-z_$]\w*\b|[^\s]/gm;
+
+    let result = '';
+    let lastIndex = 0;
+
+    // Process source char by char via regex matches
+    const escaped = esc(source);
+    // We need to tokenize the RAW source, then produce escaped+highlighted output
+    let m;
+    const raw = source;
+    rx.lastIndex = 0;
+
+    while ((m = rx.exec(raw)) !== null) {
+        // Append any unmatched text before this match (whitespace, punctuation)
+        if (m.index > lastIndex) {
+            result += esc(raw.substring(lastIndex, m.index));
+        }
+
+        const tok = m[0];
+        const escaped_tok = esc(tok);
+
+        if (tok.startsWith('/*') || tok.startsWith('//')) {
+            result += `<span class="hl-comment">${escaped_tok}</span>`;
+        } else if (tok.startsWith('"') || tok.startsWith("'")) {
+            result += `<span class="hl-string">${escaped_tok}</span>`;
+        } else if (tok.startsWith('@')) {
+            result += `<span class="hl-annotation">${escaped_tok}</span>`;
+        } else if (/^\d/.test(tok) || /^0[xX]/.test(tok) || /^\.\d/.test(tok)) {
+            result += `<span class="hl-number">${escaped_tok}</span>`;
+        } else if (/^[A-Za-z_$]/.test(tok)) {
+            // Identifier — classify as keyword or type
+            if (keywords.has(tok)) {
+                result += `<span class="hl-keyword">${escaped_tok}</span>`;
+            } else if (/^[A-Z]/.test(tok)) {
+                result += `<span class="hl-type">${escaped_tok}</span>`;
+            } else {
+                result += escaped_tok;
+            }
+        } else {
+            result += escaped_tok;
+        }
+
+        lastIndex = m.index + tok.length;
+    }
+
+    // Append remaining text
+    if (lastIndex < raw.length) {
+        result += esc(raw.substring(lastIndex));
+    }
+
+    return result;
+}
+
+function showLinkieModal(typeName, result) {
+    const existing = document.querySelector('.linkie-modal-backdrop');
+    if (existing) existing.remove();
+
+    // Build version note showing where each step resolved
+    let versionParts = [];
+    if (result.searchVersion !== result.requestedVersion) {
+        versionParts.push(`class found in ${result.searchVersion}`);
+    }
+    if (result.sourceVersion !== result.searchVersion) {
+        versionParts.push(`source from ${result.sourceVersion}`);
+    } else if (result.sourceVersion !== result.requestedVersion) {
+        versionParts.push(`source from ${result.sourceVersion}`);
+    }
+
+    const versionNote = versionParts.length
+        ? `<span class="linkie-modal-version-note">${esc(versionParts.join(' · '))} (requested ${esc(result.requestedVersion)})</span>`
+        : `<span class="linkie-modal-version-note">${esc(result.sourceVersion)}</span>`;
+
+    const highlighted = highlightJava(result.source);
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'linkie-modal-backdrop';
+    backdrop.innerHTML = `
+    <div class="linkie-modal">
+      <div class="linkie-modal-head">
+        <div>
+          <span class="linkie-modal-title">${esc(result.fullPath)}</span>
+          ${versionNote}
+        </div>
+        <button class="linkie-modal-close">✕</button>
+      </div>
+      <pre class="linkie-modal-source"><code>${highlighted}</code></pre>
+    </div>
+  `;
+
+    backdrop.addEventListener('click', e => {
+        if (e.target === backdrop || e.target.closest('.linkie-modal-close')) {
+            backdrop.remove();
+        }
+    });
+
+    document.addEventListener('keydown', function handler(e) {
+        if (e.key === 'Escape') {
+            backdrop.remove();
+            document.removeEventListener('keydown', handler);
+        }
+    });
+
+    document.body.appendChild(backdrop);
+}
+
 function renderFieldTableFlat(fields, kind, noFields) {
     if (noFields) return '<em style="color:var(--text-subtle);font-family:var(--mono);font-size:11px">Packet has no fields</em>';
     if (!fields.length) return '';
@@ -1076,7 +1482,7 @@ function renderFieldTableFlat(fields, kind, noFields) {
       <span class="idx">${esc(f.idx)}</span>
       <span class="sign">${sign}</span>
       <span class="name">${esc(f.name)}</span>
-      <span class="type">${esc(f.full)}</span>
+      <span class="type">${renderTypeWithLink(f.full)}</span>
     </div>`).join('')}
   </div>`;
 }
@@ -1088,17 +1494,17 @@ function renderFieldTableDiff(rows) {
     ${rows.map(r => {
         if (r.state === 'added') return `<div class="ft-row ft-added">
         <span class="idx">${esc(r.after.idx)}</span><span class="sign">+</span>
-        <span class="name">${esc(r.after.name)}</span><span class="type">${esc(r.after.full)}</span></div>`;
+        <span class="name">${esc(r.after.name)}</span><span class="type">${renderTypeWithLink(r.after.full)}</span></div>`;
         if (r.state === 'removed') return `<div class="ft-row ft-removed">
         <span class="idx">${esc(r.before.idx)}</span><span class="sign">−</span>
-        <span class="name">${esc(r.before.name)}</span><span class="type">${esc(r.before.full)}</span></div>`;
+        <span class="name">${esc(r.before.name)}</span><span class="type">${renderTypeWithLink(r.before.full)}</span></div>`;
         if (r.state === 'changed') return `<div class="ft-row ft-changed">
         <span class="idx">${esc(r.after.idx)}</span><span class="sign">~</span>
         <span class="name">${esc(r.after.name)}</span>
-        <span class="type"><span class="type-before">${esc(r.before.full)}</span><span class="type-after">${esc(r.after.full)}</span></span></div>`;
+        <span class="type"><span class="type-before">${renderTypeWithLink(r.before.full)}</span><span class="type-after">${renderTypeWithLink(r.after.full)}</span></span></div>`;
         return `<div class="ft-row">
         <span class="idx">${esc(r.after.idx)}</span><span class="sign" style="color:var(--text-subtle)">·</span>
-        <span class="name">${esc(r.after.name)}</span><span class="type">${esc(r.after.full)}</span></div>`;
+        <span class="name">${esc(r.after.name)}</span><span class="type">${renderTypeWithLink(r.after.full)}</span></div>`;
     }).join('')}
   </div>`;
 }
@@ -1107,11 +1513,49 @@ function bindPacketClicks() {
     $$('.pkt').forEach(el => {
         el.addEventListener('click', async (ev) => {
             // Don't toggle expand when clicking interactive children
-            if (ev.target.closest('.pkt-view-toggle, .pkt-view-raw, .pkt-view-structured button, a')) return;
+            if (ev.target.closest('.pkt-view-toggle, .pkt-view-raw, .pkt-view-structured button, a, .type-link')) return;
             // If click originated inside the expanded details but not on the pkt-row, don't collapse
             const row = ev.target.closest('.pkt-row, .pkt-preview');
             if (!row && el.classList.contains('expanded')) return;
             el.classList.toggle('expanded');
+        });
+    });
+
+    // Wire up Linkie type lookups
+    $$('.type-link').forEach(link => {
+        link.addEventListener('click', async (ev) => {
+            ev.stopPropagation();
+            const typeName = link.dataset.type;
+            if (!typeName || !app.currentVersions) return;
+
+            // Use version from the element if set (chain steps), otherwise the diff's "to" version
+            const mcVersion = link.dataset.version || app.currentVersions.to.version;
+
+            // If the type-link has a specific version (from a chain step), search forward
+            // because the type was introduced in that version — newer versions are more likely to have it.
+            // Otherwise (main diff), search backward as usual.
+            const direction = link.dataset.version ? 'forward' : 'backward';
+
+            link.classList.add('type-link-loading');
+
+            const progressToast = showProgressToast(typeName);
+
+            try {
+                const result = await linkieLookup(typeName, mcVersion, (step, version) => {
+                    if (step === 'search') {
+                        progressToast.update(`Searching for ${typeName} in ${version}…`);
+                    } else {
+                        progressToast.update(`Loading source from ${version}…`);
+                    }
+                }, direction);
+                progressToast.dismiss();
+                showLinkieModal(typeName, result);
+            } catch (err) {
+                progressToast.dismiss();
+                showToast(`Could not load source for "${typeName}": ${err.message}`, 'error');
+            } finally {
+                link.classList.remove('type-link-loading');
+            }
         });
     });
 
@@ -1512,10 +1956,13 @@ async function applyStateFromUrl({reloadIfVersionsChanged = false} = {}) {
    INIT
    ═══════════════════════════════════════════════════════════════════════════ */
 async function init() {
-    // Measure actual header height and set CSS variable for sticky positioning
+    // Measure actual header height (including border) for sticky positioning
     function syncHeaderHeight() {
         const h = document.querySelector('header');
-        if (h) document.documentElement.style.setProperty('--header-h', h.offsetHeight + 'px');
+        if (h) {
+            const rect = h.getBoundingClientRect();
+            document.documentElement.style.setProperty('--header-h', Math.ceil(rect.height) + 'px');
+        }
     }
 
     syncHeaderHeight();

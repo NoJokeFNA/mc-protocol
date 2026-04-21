@@ -27,6 +27,7 @@
     --relocated-border: rgba(199, 139, 255, 0.35);
     --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     --sans: 'Inter', -apple-system, system-ui, sans-serif;
+    --header-h: 57px;
 }
 
 * {
@@ -250,10 +251,12 @@ header {
 
 .sticky-bar {
     position: sticky;
-    /* Variable is set in the JavaScript file */
+    /* noinspection CssUnresolvedCustomProperty — set dynamically by JS, declared in :root */
     top: var(--header-h, 57px);
     z-index: 40;
     background: var(--bg);
+    /* Cover any sub-pixel gap between header border and sticky bar */
+    box-shadow: 0 -1px 0 0 var(--bg);
 }
 
 .sum-chip {
@@ -1337,6 +1340,31 @@ main {
     font-weight: 600;
 }
 
+.summary-text .chain-top-link {
+    cursor: pointer;
+    border-bottom: 1px dashed var(--text-subtle);
+    transition: color .15s, border-color .15s;
+}
+
+.summary-text .chain-top-link:hover {
+    color: var(--accent-fg);
+    border-bottom-color: var(--accent-fg);
+}
+
+.summary-text-chain {
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.chain-dir {
+    font-size: 9px;
+    color: var(--text-subtle);
+    font-weight: 600;
+}
+
 /* ———————————————————————————— COLLAPSIBLE STATE GROUPS ———————————————————————————— */
 .state-group-head {
     cursor: pointer;
@@ -1362,6 +1390,200 @@ main {
 
 .state-group.collapsed .state-group-head .chevron {
     transform: rotate(-90deg);
+}
+
+/* ———————————————————————————— TOAST NOTIFICATIONS ———————————————————————————— */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    opacity: 0;
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    max-width: 600px;
+    cursor: pointer;
+    transition: opacity .25s, transform .25s;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.toast-visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.toast-error {
+    background: var(--removed-bg);
+    border: 1px solid var(--removed-border);
+    color: var(--text);
+}
+
+.toast-info {
+    background: var(--modified-bg);
+    border: 1px solid var(--modified-border);
+    color: var(--text);
+}
+
+.toast-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.toast-error .toast-icon {
+    color: var(--removed);
+}
+
+.toast-info .toast-icon {
+    color: var(--accent-fg);
+}
+
+.toast-progress {
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+.toast-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent-fg);
+    border-radius: 50%;
+    animation: toast-spin .6s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes toast-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.toast-msg {
+    line-height: 1.4;
+}
+
+/* ———————————————————————————— LINKIE TYPE LINKS ———————————————————————————— */
+.type-link {
+    color: var(--accent-fg);
+    cursor: pointer;
+    border-bottom: 1px dashed var(--accent);
+    transition: all .15s;
+}
+
+.type-link:hover {
+    color: #fff;
+    border-bottom-style: solid;
+}
+
+.type-link-loading {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+/* ———————————————————————————— LINKIE MODAL ———————————————————————————— */
+.linkie-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.linkie-modal {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    max-width: 800px;
+    max-height: 80vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+.linkie-modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+.linkie-modal-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent-fg);
+}
+
+.linkie-modal-version-note {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-subtle);
+    margin-top: 2px;
+}
+
+.linkie-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.linkie-modal-close:hover {
+    background: var(--bg-hover);
+    color: var(--text);
+}
+
+.linkie-modal-source {
+    overflow: auto;
+    padding: 16px 18px;
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text);
+    tab-size: 4;
+}
+
+/* ———— Java syntax highlighting (dark theme, VS Code–inspired) ———— */
+.hl-keyword {
+    color: #c586c0;
+}
+
+.hl-type {
+    color: #4ec9b0;
+}
+
+.hl-string {
+    color: #ce9178;
+}
+
+.hl-number {
+    color: #b5cea8;
+}
+
+.hl-comment {
+    color: #6a9955;
+    font-style: italic;
+}
+
+.hl-annotation {
+    color: #dcdcaa;
 }
 
 /* ———————————————————————————— PACKETEVENTS WRAPPER BADGE ———————————————————————————— */
