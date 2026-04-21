@@ -16,7 +16,6 @@ import argparse
 import json
 import os
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -246,7 +245,6 @@ def sync(output_dir: Path) -> None:
 
     # Write versions index
     index_data = {
-        "lastSync": datetime.now(timezone.utc).isoformat(),
         "source": f"https://github.com/{OWNER}/{REPO}",
         "branch": BRANCH,
         "count": len(updated_versions),
