@@ -1246,8 +1246,7 @@ main {
     display: none;
     position: absolute;
     top: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
     background: #1a1f28;
     border: 1px solid var(--border);
     color: var(--text);
@@ -1271,8 +1270,7 @@ main {
     content: '';
     position: absolute;
     bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 20px;
     border: 6px solid transparent;
     border-bottom-color: #1a1f28;
 }

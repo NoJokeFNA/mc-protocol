@@ -621,17 +621,107 @@ function esc(s) {
 function populateVersionPickers() {
     const visible = app.versions.filter(v => app.includePre || v.kind === 'stable');
 
-    function opts(vers) {
-        const byKind = {stable: [], prerelease: [], snapshot: []};
-        for (const v of vers) byKind[v.kind].push(v);
+    function buildGroupedOptions(versions) {
+        // Work in reverse chronological order (newest first)
+        const reversed = [...versions].reverse();
+
+        if (!app.includePre) {
+            // Simple flat list of stables
+            return reversed.map(v =>
+                `<option value="${v.sha}">${esc(v.version)}</option>`
+            ).join('');
+        }
+
+        // Group pre-releases/snapshots under their parent stable version.
+        // A pre-release "1.21.6-pre1" belongs to "1.21.6".
+        // A snapshot "24w45a" belongs to the next stable after it chronologically.
+        const stables = versions.filter(v => v.kind === 'stable');
+        const stableNames = new Set(stables.map(s => s.version));
+
+        function findParentStable(v) {
+            if (v.kind === 'prerelease') {
+                // "1.21.6-pre1" → "1.21.6", "26.1.2-rc-1" → "26.1.2"
+                const base = v.version.replace(/-(?:pre|rc).*$/i, '');
+                if (stableNames.has(base)) return base;
+                // Try shorter: "26.1.2" → "26.1" → "26"
+                const parts = base.split('.');
+                while (parts.length > 1) {
+                    parts.pop();
+                    const shorter = parts.join('.');
+                    if (stableNames.has(shorter)) return shorter;
+                }
+                return null; // will be handled as orphan below
+            }
+            // Snapshot: find the next stable AFTER this version's date
+            for (const s of stables) {
+                if (s.date > v.date) return s.version;
+            }
+            // No stable after it — attach to the last stable BEFORE it
+            for (let i = stables.length - 1; i >= 0; i--) {
+                if (stables[i].date <= v.date) return stables[i].version;
+            }
+            return null;
+        }
+
+        // Build groups: { stableVersion: [nonStableVersions...] }
+        const groups = new Map();
+        for (const v of versions) {
+            if (v.kind === 'stable') {
+                if (!groups.has(v.version)) groups.set(v.version, []);
+            }
+        }
+        const orphans = [];
+        for (const v of versions) {
+            if (v.kind !== 'stable') {
+                const parent = findParentStable(v);
+                if (parent && groups.has(parent)) {
+                    groups.get(parent).push(v);
+                } else {
+                    orphans.push(v);
+                }
+            }
+        }
+        // For orphans (pre-releases/snapshots with no matching stable),
+        // attach to the nearest stable BEFORE them chronologically.
+        // This puts "1.19.1-pre3" under the stable that precedes it (e.g. 1.19).
+        for (const v of orphans) {
+            let attached = false;
+            for (let i = stables.length - 1; i >= 0; i--) {
+                if (stables[i].date <= v.date) {
+                    groups.get(stables[i].version).push(v);
+                    attached = true;
+                    break;
+                }
+            }
+            // If even the oldest stable is newer, attach to the oldest
+            if (!attached && stables.length) {
+                groups.get(stables[0].version).push(v);
+            }
+        }
+
+        // Render in reverse chronological order
         let html = '';
-        if (byKind.stable.length) html += `<optgroup label="Stable">${byKind.stable.map(v => `<option value="${v.sha}">${esc(v.version)}</option>`).join('')}</optgroup>`;
-        if (byKind.prerelease.length) html += `<optgroup label="Pre-releases / RCs">${byKind.prerelease.map(v => `<option value="${v.sha}">${esc(v.version)}</option>`).join('')}</optgroup>`;
-        if (byKind.snapshot.length) html += `<optgroup label="Snapshots">${byKind.snapshot.map(v => `<option value="${v.sha}">${esc(v.version)}</option>`).join('')}</optgroup>`;
+
+        for (const v of reversed) {
+            if (v.kind !== 'stable') continue;
+            html += `<option value="${v.sha}">${esc(v.version)}</option>`;
+
+            // Its children (pre-releases/snapshots), reverse chrono within group
+            const children = groups.get(v.version) || [];
+            const childrenSorted = [...children].sort((a, b) => b.date - a.date);
+
+            for (let i = 0; i < childrenSorted.length; i++) {
+                const c = childrenSorted[i];
+                const isLast = i === childrenSorted.length - 1;
+                const prefix = isLast ? '  └ ' : '  ├ ';
+                html += `<option value="${c.sha}">${prefix}${esc(c.version)}</option>`;
+            }
+        }
+
         return html;
     }
 
-    const html = opts([...visible].reverse());
+    const html = buildGroupedOptions(visible);
     $('#fromSelect').innerHTML = html;
     $('#toSelect').innerHTML = html;
 
@@ -738,7 +828,7 @@ function renderDiff(fromV, toV, diff) {
         <div class="col-header cb">
           <span class="arrow-big">S → C</span>
           <span class="title">Clientbound</span>
-          <span class="count" id="cbCount">—</span>
+          <span class="count" id="cbCount">-</span>
         </div>
         <div class="col-body" id="cbBody">${renderColumn(cb)}</div>
       </div>
@@ -746,7 +836,7 @@ function renderDiff(fromV, toV, diff) {
         <div class="col-header sb">
           <span class="arrow-big">C → S</span>
           <span class="title">Serverbound</span>
-          <span class="count" id="sbCount">—</span>
+          <span class="count" id="sbCount">-</span>
         </div>
         <div class="col-body" id="sbBody">${renderColumn(sb)}</div>
       </div>
@@ -983,13 +1073,13 @@ function renderPacket(p, group) {
             if (wi.wrapper) {
                 const cls = isExact ? 'wrapper-badge' : 'wrapper-badge wrapper-approx';
                 const title = isExact
-                    ? `${wi.enumName} — PacketEvents ${wi.peVersion.replace(/_/g, '.')}`
-                    : `${wi.enumName} — mapped from PE ${wi.peVersion.replace(/_/g, '.')} (no exact match for ${toVersion})`;
+                    ? `${wi.enumName} - PacketEvents ${wi.peVersion.replace(/_/g, '.')}`
+                    : `${wi.enumName} - mapped from PE ${wi.peVersion.replace(/_/g, '.')} (no exact match for ${toVersion})`;
                 wrapperBadge = wi.url
                     ? `<a class="${cls}" href="${esc(wi.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${esc(title)}">${esc(wi.wrapper)}</a>`
                     : `<span class="${cls}" title="${esc(title)}">${esc(wi.wrapper)}</span>`;
             } else {
-                wrapperBadge = `<span class="wrapper-badge no-wrapper" title="${esc(wi.enumName)} — no wrapper class">${esc(wi.enumName)}</span>`;
+                wrapperBadge = `<span class="wrapper-badge no-wrapper" title="${esc(wi.enumName)} - no wrapper class">${esc(wi.enumName)}</span>`;
             }
         }
     }
@@ -1030,7 +1120,7 @@ function renderPreview(p) {
         if (changed) parts.push(`<span class="pv-item chg-dot">${changed} type${changed === 1 ? '' : 's'} changed</span>`);
         if (reordered) parts.push(`<span class="pv-item reorder-dot">⇵ ${reordered} reordered</span>`);
         if (p.idChanged) parts.push(`<span class="pv-item">id ${p.before.idHex}→${p.after.idHex}</span>`);
-        if (p.dirChanged) parts.push(`<span class="pv-item">dir ${p.before.dir || '—'}→${p.after.dir || '—'}</span>`);
+        if (p.dirChanged) parts.push(`<span class="pv-item">dir ${p.before.dir || '-'}→${p.after.dir || '-'}</span>`);
         if (!parts.length) return '';
         return `<div class="pkt-preview">${parts.join('')}</div>`;
     }
@@ -1041,7 +1131,7 @@ function renderDetails(p) {
     const meta = [];
     if (p.idChanged) meta.push(`id: <span class="old">${p.before.idHex}</span> → <span class="new">${p.after.idHex}</span>`);
     if (p.nameChanged) meta.push(`name: <span class="old">${esc(p.before.name)}</span> → <span class="new">${esc(p.after.name)}</span>`);
-    if (p.dirChanged) meta.push(`direction: <span class="old">${esc(p.before.dir || '—')}</span> → <span class="new">${esc(p.after.dir || '—')}</span>`);
+    if (p.dirChanged) meta.push(`direction: <span class="old">${esc(p.before.dir || '-')}</span> → <span class="new">${esc(p.after.dir || '-')}</span>`);
     if (p.fieldDiff && p.fieldDiff.reorderedFields && p.fieldDiff.reorderedFields.length) {
         const names = p.fieldDiff.reorderedFields.map(r => esc(r.name)).join(', ');
         meta.push(`reordered: <span style="color:var(--renamed)">${names}</span>`);
@@ -1087,7 +1177,7 @@ function renderChainStep(step) {
 
     if (sp.idChanged) changes.push(`<span class="change meta">id: ${sp.before.idHex} → ${sp.after.idHex}</span>`);
     if (sp.nameChanged) changes.push(`<span class="change meta">name: ${esc(sp.before.name)} → ${esc(sp.after.name)}</span>`);
-    if (sp.dirChanged) changes.push(`<span class="change meta">direction: ${esc(sp.before.dir || '—')} → ${esc(sp.after.dir || '—')}</span>`);
+    if (sp.dirChanged) changes.push(`<span class="change meta">direction: ${esc(sp.before.dir || '-')} → ${esc(sp.after.dir || '-')}</span>`);
 
     if (sp.tag === 'added') {
         changes.push(`<span class="change add">+ added as new packet</span>`);

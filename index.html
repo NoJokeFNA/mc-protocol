@@ -43,7 +43,7 @@
     </label>
     <label class="toggle has-tip" id="viaChainToggle">
         <input type="checkbox"/>via chain
-        <span class="tip">Instead of comparing just the two selected versions directly, load <strong>every intermediate version</strong> between them and show a <strong>step-by-step evolution</strong> per packet. Useful when porting across multiple versions — you'll see exactly <em>when</em> each change happened, not just the end result.</span>
+        <span class="tip">Instead of comparing just the two selected versions directly, load <strong>every intermediate version</strong> between them and show a <strong>step-by-step evolution</strong> per packet. Useful when porting across multiple versions - you'll see exactly <em>when</em> each change happened, not just the end result.</span>
     </label>
 
     <div class="spacer"></div>
@@ -56,29 +56,29 @@
     <div class="summary" id="summary" style="display:none">
         <div class="sum-chip added has-tip" data-tag="added"><span class="num" id="cntAdded">0</span><span class="lbl">added</span><span
                 class="filter-hint">filter</span>
-            <span class="tip"><strong>Added</strong> — completely new packets that didn't exist in the previous version. These need new <code>PacketWrapper</code> implementations.<br><br>Click to show only added packets.</span>
+            <span class="tip"><strong>Added</strong> - completely new packets that didn't exist in the previous version. These need new <code>PacketWrapper</code> implementations.<br><br>Click to show only added packets.</span>
         </div>
         <div class="sum-chip removed has-tip" data-tag="removed"><span class="num" id="cntRemoved">0</span><span
                 class="lbl">removed</span><span class="filter-hint">filter</span>
-            <span class="tip"><strong>Removed</strong> — packets that were deleted. Existing handlers for these should be removed or guarded with version checks.<br><br>Click to show only removed packets.</span>
+            <span class="tip"><strong>Removed</strong> - packets that were deleted. Existing handlers for these should be removed or guarded with version checks.<br><br>Click to show only removed packets.</span>
         </div>
         <div class="sum-chip modified has-tip" data-tag="modified"><span class="num" id="cntModified">0</span><span
                 class="lbl">modified</span><span class="filter-hint">filter</span>
-            <span class="tip"><strong>Modified</strong> — packets where field types changed, fields were added/removed, or field order changed. These are the most common porting tasks.<br><br>Click to show only modified packets.</span>
+            <span class="tip"><strong>Modified</strong> - packets where field types changed, fields were added/removed, or field order changed. These are the most common porting tasks.<br><br>Click to show only modified packets.</span>
         </div>
         <div class="sum-chip renamed has-tip" data-tag="renamed"><span class="num" id="cntRenamed">0</span><span
                 class="lbl">renamed</span><span class="filter-hint">filter</span>
-            <span class="tip"><strong>Renamed</strong> — same packet structure, different name. Usually cosmetic (e.g. "Packet" suffix removed). No functional impact on wire protocol.<br><br>Click to show only renamed packets.</span>
+            <span class="tip"><strong>Renamed</strong> - same packet structure, different name. Usually cosmetic (e.g. "Packet" suffix removed). No functional impact on wire protocol.<br><br>Click to show only renamed packets.</span>
         </div>
         <div class="sum-chip relocated has-tip" data-tag="relocated"><span class="num" id="cntRelocated">0</span><span
                 class="lbl">relocated</span><span class="filter-hint">filter</span>
-            <span class="tip"><strong>Relocated</strong> — same packet, same fields, but assigned a different <strong>packet ID</strong> (e.g. 0x1D → 0x1F). The ID mapping table needs updating but the packet structure is unchanged.<br><br>Click to show only relocated packets.</span>
+            <span class="tip"><strong>Relocated</strong> - same packet, same fields, but assigned a different <strong>packet ID</strong> (e.g. 0x1D → 0x1F). The ID mapping table needs updating but the packet structure is unchanged.<br><br>Click to show only relocated packets.</span>
         </div>
         <div class="sum-sep"></div>
         <div class="sum-meta">
             <span>protocol <strong id="protoRange">?</strong></span>
-            <span id="daysRange">—</span>
-            <span id="unchangedCount">—</span>
+            <span id="daysRange">-</span>
+            <span id="unchangedCount">-</span>
         </div>
     </div>
 
