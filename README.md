@@ -4,8 +4,7 @@ A visual diff tool for [Minecraft protocol](https://github.com/derklaro/mc-proto
 on [PacketEvents](https://github.com/retrooper/packetevents).
 
 Compare any two Minecraft versions and instantly see which packets were added, removed, modified, renamed, or
-relocated - with field-level detail, type change detection, direct links to PacketEvents wrapper classes, and live
-Mojang source lookups.
+relocated - with field-level detail, type change detection, and direct links to PacketEvents wrapper classes.
 
 **[→ Open the tool](https://nojokefna.github.io/mc-protocol/)**
 
@@ -46,18 +45,6 @@ website loads these JSON files directly - no GitHub API calls at runtime, no rat
 - Version-aware fallback: if PacketEvents doesn't have an exact match for the MC version, the nearest older mapping is
   used (dotted border indicates approximate match)
 - Handles duplicate enum names across connection states (e.g. `KEEP_ALIVE` in Play vs. Configuration)
-
-### Linkie Source Lookup
-
-- Click any non-primitive field type (e.g. `ClientInformation`, `MerchantOffers`) to look up the **Mojang source**
-  via [Linkie](https://linkie.shedaniel.dev/)
-- Java source displayed in a modal with full **syntax highlighting** (VS Code dark theme colors: keywords, types,
-  strings, numbers, comments, annotations)
-- **Version fallback with progress**: if the requested MC version isn't available on Linkie, automatically tries older
-  or newer stable releases with a live progress toast showing which version is being searched
-- **Context-aware search direction**: types clicked in chain steps search forward (newer versions first), types in main
-  diff search backward (older versions first)
-- Shows resolved version in the modal header when a fallback was needed
 
 ### UI & Navigation
 
@@ -156,5 +143,4 @@ Open `http://localhost:8000`.
 
 - Protocol data sourced from [derklaro/mc-protocol](https://github.com/derklaro/mc-protocol)
 - Wrapper mappings from [PacketEvents](https://github.com/retrooper/packetevents)
-- Class source lookups via [Linkie](https://linkie.shedaniel.dev/)
 - Built entirely by [Claude](https://claude.ai) (Anthropic)
