@@ -1,7 +1,7 @@
 {
   "source": "https://github.com/derklaro/mc-protocol",
   "branch": "gh-pages",
-  "count": 221,
+  "count": 222,
   "versions": [
     {
       "version": "mc 1.19.1-pre-2",
@@ -1770,6 +1770,14 @@
       "date": "2026-06-24T01:04:04Z",
       "protocol": "1073742147",
       "file": "snapshot/26.3-snapshot-1.json"
+    },
+    {
+      "version": "26.3-snapshot-2",
+      "kind": "snapshot",
+      "sha": "c82e3e5f4f92722439f8bd46e8c0ca96c50ad141",
+      "date": "2026-07-01T01:13:24Z",
+      "protocol": "1073742148",
+      "file": "snapshot/26.3-snapshot-2.json"
     }
   ]
 }
