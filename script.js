@@ -1069,7 +1069,7 @@ function renderPacket(p, group) {
         const wi = lookupWrapper(lookupRef.id, lookupVersion, direction, stateName);
         if (wi) {
             // Check if PE version is an exact match or a close fallback
-            const mcNorm = lookupVersion.replace(/-(?:pre|rc|snapshot).*$/i, '').replace(/\./g, '_');
+            const mcNorm = lookupVersion.replace(/\./g, '_');
             const isExact = wi.peVersion === mcNorm;
 
             if (wi.wrapper) {
