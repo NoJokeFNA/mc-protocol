@@ -104,6 +104,13 @@ def _classify_wrapper(wrapper_name: str) -> tuple[str | None, str | None]:
         WrapperStatusClientRequest → ("client", "status")
         WrapperHandshakingClientHandshake → ("client", "handshaking")
     """
+    # These server wrappers omit "Server" in their class names.
+    if wrapper_name in (
+        "WrapperPlayWorldBorderLerpSize",
+        "WrapperPlayWorldBorderWarningDelay",
+    ):
+        return "server", "play"
+
     # Pattern: Wrapper{State}{Side}{Name}
     m = re.match(
         r"Wrapper(Play|Config|Login|Status|Handshaking)"
