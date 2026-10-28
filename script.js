@@ -1145,9 +1145,9 @@ function renderDetails(p) {
   </div>`;
 
     let tableHtml;
-    if (p.tag === 'added') tableHtml = renderFieldTableFlat(p.after.fields, 'added', p.after.noFields);
-    else if (p.tag === 'removed') tableHtml = renderFieldTableFlat(p.before.fields, 'removed', p.before.noFields);
-    else if (p.fieldDiff) tableHtml = renderFieldTableDiff(p.fieldDiff.rows);
+    if (p.tag === 'added') tableHtml = renderFieldTableFlat(p.after.fields, 'added', p.after.noFields, app.currentVersions.to.version);
+    else if (p.tag === 'removed') tableHtml = renderFieldTableFlat(p.before.fields, 'removed', p.before.noFields, app.currentVersions.from.version);
+    else if (p.fieldDiff) tableHtml = renderFieldTableDiff(p.fieldDiff.rows, app.currentVersions.from.version, app.currentVersions.to.version);
     else tableHtml = '<em style="color:var(--text-subtle);font-family:var(--mono);font-size:11px">(no field changes)</em>';
 
     // Chain steps if present
@@ -1184,11 +1184,12 @@ function renderChainStep(step) {
     } else if (sp.tag === 'removed') {
         changes.push(`<span class="change rem">− removed</span>`);
     } else if (sp.fieldDiff) {
-        const stepVer = step.to.version;
+        const beforeVersion = step.from.version;
+        const afterVersion = step.to.version;
         for (const r of sp.fieldDiff.rows) {
-            if (r.state === 'added') changes.push(`<span class="change add">+ ${esc(r.after.name)}: ${esc(r.after.full)}</span>`);
-            else if (r.state === 'removed') changes.push(`<span class="change rem">− ${esc(r.before.name)}: ${esc(r.before.full)}</span>`);
-            else if (r.state === 'changed') changes.push(`<span class="change chg">~ ${esc(r.after.name)}: ${esc(r.before.full)} → ${esc(r.after.full)}</span>`);
+            if (r.state === 'added') changes.push(`<span class="change add">+ ${esc(r.after.name)}: ${ClassBrowser.renderType(r.after.full, afterVersion)}</span>`);
+            else if (r.state === 'removed') changes.push(`<span class="change rem">− ${esc(r.before.name)}: ${ClassBrowser.renderType(r.before.full, beforeVersion)}</span>`);
+            else if (r.state === 'changed') changes.push(`<span class="change chg">~ ${esc(r.after.name)}: ${ClassBrowser.renderType(r.before.full, beforeVersion)} → ${ClassBrowser.renderType(r.after.full, afterVersion)}</span>`);
         }
         if (sp.fieldDiff.reorderedFields && sp.fieldDiff.reorderedFields.length) {
             changes.push(`<span class="change chg">⇵ reordered: ${sp.fieldDiff.reorderedFields.map(r => esc(r.name)).join(', ')}</span>`);
@@ -1206,7 +1207,7 @@ function renderChainStep(step) {
   </div>`;
 }
 
-function renderFieldTableFlat(fields, kind, noFields) {
+function renderFieldTableFlat(fields, kind, noFields, version) {
     if (noFields) return '<em style="color:var(--text-subtle);font-family:var(--mono);font-size:11px">Packet has no fields</em>';
     if (!fields.length) return '';
     const sign = kind === 'added' ? '+' : kind === 'removed' ? '−' : '';
@@ -1217,29 +1218,29 @@ function renderFieldTableFlat(fields, kind, noFields) {
       <span class="idx">${esc(f.idx)}</span>
       <span class="sign">${sign}</span>
       <span class="name">${esc(f.name)}</span>
-      <span class="type">${esc(f.full)}</span>
+      <span class="type">${ClassBrowser.renderType(f.full, version)}</span>
     </div>`).join('')}
   </div>`;
 }
 
-function renderFieldTableDiff(rows) {
+function renderFieldTableDiff(rows, beforeVersion, afterVersion) {
     if (!rows.length) return '<em style="color:var(--text-subtle);font-family:var(--mono);font-size:11px">no fields</em>';
     return `<div class="field-table">
     <div class="ft-head"><span style="text-align:right">#</span><span></span><span>name</span><span>type</span></div>
     ${rows.map(r => {
         if (r.state === 'added') return `<div class="ft-row ft-added">
         <span class="idx">${esc(r.after.idx)}</span><span class="sign">+</span>
-        <span class="name">${esc(r.after.name)}</span><span class="type">${esc(r.after.full)}</span></div>`;
+        <span class="name">${esc(r.after.name)}</span><span class="type">${ClassBrowser.renderType(r.after.full, afterVersion)}</span></div>`;
         if (r.state === 'removed') return `<div class="ft-row ft-removed">
         <span class="idx">${esc(r.before.idx)}</span><span class="sign">−</span>
-        <span class="name">${esc(r.before.name)}</span><span class="type">${esc(r.before.full)}</span></div>`;
+        <span class="name">${esc(r.before.name)}</span><span class="type">${ClassBrowser.renderType(r.before.full, beforeVersion)}</span></div>`;
         if (r.state === 'changed') return `<div class="ft-row ft-changed">
         <span class="idx">${esc(r.after.idx)}</span><span class="sign">~</span>
         <span class="name">${esc(r.after.name)}</span>
-        <span class="type"><span class="type-before">${esc(r.before.full)}</span><span class="type-after">${esc(r.after.full)}</span></span></div>`;
+        <span class="type"><span class="type-before">${ClassBrowser.renderType(r.before.full, beforeVersion)}</span><span class="type-after">${ClassBrowser.renderType(r.after.full, afterVersion)}</span></span></div>`;
         return `<div class="ft-row">
         <span class="idx">${esc(r.after.idx)}</span><span class="sign" style="color:var(--text-subtle)">·</span>
-        <span class="name">${esc(r.after.name)}</span><span class="type">${esc(r.after.full)}</span></div>`;
+        <span class="name">${esc(r.after.name)}</span><span class="type">${ClassBrowser.renderType(r.after.full, afterVersion)}</span></div>`;
     }).join('')}
   </div>`;
 }
@@ -1536,6 +1537,7 @@ function moveFocus(delta) {
 }
 
 document.addEventListener('keydown', e => {
+    if (document.querySelector('.class-dialog[open]') || e.target.closest('.class-link')) return;
     const tgt = e.target;
     const isInput = tgt.tagName === 'INPUT' || tgt.tagName === 'SELECT' || tgt.tagName === 'TEXTAREA';
     if (isInput) {
@@ -1726,3 +1728,4 @@ async function init() {
 }
 
 init();
+ClassBrowser.install(document);

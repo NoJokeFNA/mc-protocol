@@ -1461,3 +1461,39 @@ a.wrapper-badge:hover {
     color: var(--border);
     margin: 0 10px;
 }
+/* Exact-version class browser */
+.class-link {
+    font: inherit;
+    color: var(--accent-fg, #79c0ff);
+    background: none;
+    border: 0;
+    border-bottom: 1px dotted currentColor;
+    border-radius: 0;
+    padding: 0;
+    cursor: pointer;
+}
+.class-link:hover { text-decoration: underline; }
+.class-link:focus-visible, .class-result:focus-visible { outline: 2px solid var(--accent-fg, #79c0ff); outline-offset: 3px; }
+.class-dialog {
+    width: min(760px, calc(100vw - 32px));
+    max-height: 85vh;
+    margin: auto;
+    padding: 24px;
+    border: 1px solid var(--border, #30363d);
+    border-radius: 12px;
+    color: var(--text, #e6edf3);
+    background: var(--bg, #0d1117);
+    overflow: auto;
+}
+.class-dialog::backdrop { background: rgb(0 0 0 / 65%); }
+.class-dialog header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.class-dialog h2 { font-size: 18px; overflow-wrap: anywhere; }
+.class-dialog button { cursor: pointer; }
+.class-dialog .class-close { font: inherit; font-size: 24px; color: inherit; background: none; border: 0; padding: 0 8px; }
+.class-version, .class-note { color: var(--text-muted, #8b949e); font-size: 12px; margin: 10px 0; line-height: 1.6; }
+.class-sides { display: flex; gap: 8px; margin: 16px 0; }
+.class-sides button, .class-results button { font: inherit; padding: 6px 12px; color: inherit; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
+.class-sides button[aria-pressed="true"] { border-color: var(--accent-fg, #79c0ff); color: var(--accent-fg, #79c0ff); }
+.class-status { font-size: 13px; line-height: 1.6; }
+.class-results { display: grid; gap: 8px; margin: 16px 0; }
+.class-result { display: block; padding: 12px; border: 1px solid var(--border); border-radius: 6px; color: var(--accent-fg, #79c0ff); font-family: var(--mono, monospace); font-size: 12px; overflow-wrap: anywhere; }
