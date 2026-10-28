@@ -85,7 +85,8 @@ function findPEVersion(mcVersion, key) {
 
     // Normalize mc-protocol version to PE format: "1.21.6" → "1_21_6", "26.1" → "26_1"
     // Strip snapshot/pre/rc suffixes for matching
-    const stripped = mcVersion.replace(/-(?:pre|rc|snapshot).*$/i, '').replace(/\./g, '_');
+    const stripped = mcVersion.trim().replace(/^mc\s+/i, '').replace(/-(?:pre|rc|snapshot).*$/i, '').replace(/\./g, '_');
+    if (!/^\d+(?:_\d+)*$/.test(stripped)) return null;
 
     // Exact match first
     if (peVersions.includes(stripped)) return stripped;
@@ -113,6 +114,22 @@ function findPEVersion(mcVersion, key) {
     return best;
 }
 
+// Load only the published protocol versions needed to validate PE fallbacks.
+// A failed optional lookup must not prevent the protocol diff from loading.
+async function prepareWrapperLookups(versions) {
+    if (!app.packetEvents) return;
+    const references = new Map();
+    for (const version of versions) {
+        for (const key of Object.keys(app.packetEvents.versions)) {
+            const peVersion = findPEVersion(version.version, key);
+            if (!peVersion || peVersion === version.version.replace(/\./g, '_')) continue;
+            const reference = app.versions.find(v => v.kind === 'stable' && v.version === peVersion.replace(/_/g, '.'));
+            if (reference) references.set(reference.sha, reference);
+        }
+    }
+    await Promise.all([...references.values()].map(v => loadVersionData(v).catch(() => null)));
+}
+
 /**
  * Looks up the PacketEvents wrapper info for a packet by its ID in a specific version.
  *
@@ -120,9 +137,10 @@ function findPEVersion(mcVersion, key) {
  * @param {string} mcVersion - MC version string (e.g. "1.21.6")
  * @param {string} direction - "Clientbound" or "Serverbound"
  * @param {string} stateName - Connection state name (e.g. "Game", "Play", "Configuration")
+ * @param {string} packetName - Protocol packet name, used to validate version fallbacks
  * @returns {{ enumName: string, wrapper: string|null, url: string|null, peVersion: string }|null}
  */
-function lookupWrapper(packetId, mcVersion, direction, stateName) {
+function lookupWrapper(packetId, mcVersion, direction, stateName, packetName) {
     if (!app.packetEvents) return null;
 
     // Build the key: "play_serverbound", "configuration_clientbound", etc.
@@ -137,7 +155,27 @@ function lookupWrapper(packetId, mcVersion, direction, stateName) {
     const peVersion = findPEVersion(mcVersion, key);
     if (!peVersion) return null;
 
-    // Look up the enum at the packet's ordinal position
+    // A fallback version can reuse the same ID for an unrelated packet.
+    // Resolve the packet's identity in that version before indexing its enum.
+    if (mcVersion.replace(/\./g, '_') !== peVersion) {
+        const reference = app.versions.find(v => v.kind === 'stable' && v.version === peVersion.replace(/_/g, '.'));
+        if (reference) {
+            const data = app.versionCache.get(reference.sha);
+            if (!data) return null;
+            const section = data.sections.find(s => {
+                const name = s.stateName.toLowerCase();
+                const normalized = name === 'game' ? 'play' : name === 'config' ? 'configuration' : name;
+                return normalized === state && s.direction.toLowerCase() === dir;
+            });
+            const matches = (section?.packets || []).filter(p => p.name.toLowerCase() === packetName?.toLowerCase());
+            if (matches.length === 1) packetId = matches[0].id;
+            else if (!/^\d+(?:\.\d+)*$/.test(mcVersion)) return null;
+        } else if (!/^\d+(?:\.\d+)*$/.test(mcVersion)) {
+            return null;
+        }
+    }
+
+    // Look up the enum at the packet's ordinal position in the PE version.
     const versionMappings = app.packetEvents.mappings[key];
     if (!versionMappings) return null;
     const enumList = versionMappings[peVersion];
@@ -786,6 +824,7 @@ async function runDiff() {
             const [before, after] = await Promise.all([loadVersionData(olderV), loadVersionData(newerV)]);
             diff = diffProtocol(before, after);
         }
+        await prepareWrapperLookups([olderV, newerV]);
         app.currentDiff = diff;
         app.currentVersions = {from: olderV, to: newerV, intermediates};
         renderDiff(olderV, newerV, diff);
@@ -1066,7 +1105,7 @@ function renderPacket(p, group) {
         const direction = (group.direction || '').toLowerCase();
         const stateName = group.stateName;
         const lookupRef = p.after || p.before;
-        const wi = lookupWrapper(lookupRef.id, lookupVersion, direction, stateName);
+        const wi = lookupWrapper(lookupRef.id, lookupVersion, direction, stateName, lookupRef.name);
         if (wi) {
             // Check if PE version is an exact match or a close fallback
             const mcNorm = lookupVersion.replace(/\./g, '_');
