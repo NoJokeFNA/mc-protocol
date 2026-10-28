@@ -1061,21 +1061,22 @@ function renderPacket(p, group) {
     // PacketEvents wrapper lookup
     let wrapperBadge = '';
     if (group && app.currentVersions) {
-        const toVersion = app.currentVersions.to.version;
+        // Removed packets belong to the before version; their IDs may be reused.
+        const lookupVersion = (p.after ? app.currentVersions.to : app.currentVersions.from).version;
         const direction = (group.direction || '').toLowerCase();
         const stateName = group.stateName;
         const lookupRef = p.after || p.before;
-        const wi = lookupWrapper(lookupRef.id, toVersion, direction, stateName);
+        const wi = lookupWrapper(lookupRef.id, lookupVersion, direction, stateName);
         if (wi) {
             // Check if PE version is an exact match or a close fallback
-            const mcNorm = toVersion.replace(/-(?:pre|rc|snapshot).*$/i, '').replace(/\./g, '_');
+            const mcNorm = lookupVersion.replace(/-(?:pre|rc|snapshot).*$/i, '').replace(/\./g, '_');
             const isExact = wi.peVersion === mcNorm;
 
             if (wi.wrapper) {
                 const cls = isExact ? 'wrapper-badge' : 'wrapper-badge wrapper-approx';
                 const title = isExact
                     ? `${wi.enumName} - PacketEvents ${wi.peVersion.replace(/_/g, '.')}`
-                    : `${wi.enumName} - mapped from PE ${wi.peVersion.replace(/_/g, '.')} (no exact match for ${toVersion})`;
+                    : `${wi.enumName} - mapped from PE ${wi.peVersion.replace(/_/g, '.')} (no exact match for ${lookupVersion})`;
                 wrapperBadge = wi.url
                     ? `<a class="${cls}" href="${esc(wi.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${esc(title)}">${esc(wi.wrapper)}</a>`
                     : `<span class="${cls}" title="${esc(title)}">${esc(wi.wrapper)}</span>`;
