@@ -9,8 +9,10 @@
         return String(value).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
     }
 
-    function renderType(type, version) {
+    function renderType(type, version, direction) {
         if (!version) return escapeHtml(type);
+        const normalizedDirection = String(direction || '').toLowerCase().replace(/\s+/g, '');
+        const side = normalizedDirection === 'serverbound' || normalizedDirection === 'c➔s' ? 'server' : 'client';
         // Preserve qualified and nested names; link every domain type in generics.
         const pattern = /\b(?:[a-z_$][\w$]*\.)*[A-Z][\w$]*(?:\.[A-Z][\w$]*)*/g;
         let html = '', end = 0;
@@ -18,7 +20,7 @@
             html += escapeHtml(type.slice(end, match.index));
             const name = match[0];
             html += CONTAINERS.has(name) ? escapeHtml(name)
-                : `<button type="button" class="class-link" data-class="${escapeHtml(name)}" data-version="${escapeHtml(version)}" title="View ${escapeHtml(name)} in Minecraft ${escapeHtml(version)}">${escapeHtml(name)}</button>`;
+                : `<button type="button" class="class-link" data-class="${escapeHtml(name)}" data-version="${escapeHtml(version)}" data-side="${side}" title="View ${escapeHtml(name)} in Minecraft ${escapeHtml(version)}">${escapeHtml(name)}</button>`;
             end = match.index + name.length;
         }
         return html + escapeHtml(type.slice(end));
@@ -212,7 +214,7 @@
                 }
             }
             dialog.querySelectorAll('[data-side]').forEach(button => button.addEventListener('click', () => search(button.dataset.side)));
-            search('client');
+            search(trigger.dataset.side === 'server' ? 'server' : 'client');
         });
     }
 
